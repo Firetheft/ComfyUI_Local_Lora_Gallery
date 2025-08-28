@@ -23,6 +23,9 @@ SELECTIONS_FILE = os.path.join(NODE_DIR, "lora_gallery_selections.json")
 METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
 
+VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi']
+IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif']
+
 def load_json_file(file_path):
     if not os.path.exists(file_path):
         return {}
@@ -47,12 +50,16 @@ save_ui_state = lambda data: save_json_file(data, UI_STATE_FILE)
 load_selections = lambda: load_json_file(SELECTIONS_FILE)
 save_selections = lambda data: save_json_file(data, SELECTIONS_FILE)
 
-def get_lora_preview_image(lora_name):
+def get_lora_preview_asset(lora_name):
+    """Finds a preview asset (image or video) for a given LoRA."""
     lora_path = folder_paths.get_full_path("loras", lora_name)
-    if lora_path is None: return None
+    if lora_path is None:
+        return None
     base_name, _ = os.path.splitext(lora_path)
-    for ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']:
-        if os.path.exists(base_name + ext): return os.path.basename(base_name + ext)
+    
+    for ext in IMAGE_EXTENSIONS + VIDEO_EXTENSIONS:
+        if os.path.exists(base_name + ext):
+            return os.path.basename(base_name + ext)
     return None
 
 @server.PromptServer.instance.routes.get("/localloragallery/get_loras")
@@ -78,12 +85,26 @@ async def get_loras_endpoint(request):
                     if not any(ft in tags for ft in filter_tags):
                         continue
             
-            preview_filename = get_lora_preview_image(lora)
+            preview_filename = get_lora_preview_asset(lora)
             preview_url = ""
+            preview_type = "none"
+            
             if preview_filename:
+                _, ext = os.path.splitext(preview_filename)
+                if ext.lower() in VIDEO_EXTENSIONS:
+                    preview_type = "video"
+                elif ext.lower() in IMAGE_EXTENSIONS:
+                    preview_type = "image"
+
                 encoded_lora_name = urllib.parse.quote(lora)
                 preview_url = f"/localloragallery/preview?filename={preview_filename}&lora_name={encoded_lora_name}"
-            lora_info_list.append({"name": lora, "preview_url": preview_url, "tags": lora_meta.get('tags', [])})
+
+            lora_info_list.append({
+                "name": lora,
+                "preview_url": preview_url,
+                "preview_type": preview_type,
+                "tags": lora_meta.get('tags', [])
+            })
         
         return web.json_response(lora_info_list)
     except Exception as e: return web.json_response({"error": str(e)}, status=500)

@@ -59,7 +59,6 @@ const LocalLoraGalleryNode = {
             const uniqueId = `locallora-gallery-${this.id}`;
             widgetContainer.innerHTML = `
                 <style>
-                    /* ... [Your existing styles remain unchanged] ... */
                     #${uniqueId} .locallora-container { display: flex; flex-direction: column; height: 100%; font-family: sans-serif; }
                     #${uniqueId} .locallora-selected-list { flex-shrink: 0; padding: 5px; background-color: #22222200; max-height: 100%; }
                     #${uniqueId} .locallora-lora-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
@@ -76,7 +75,25 @@ const LocalLoraGalleryNode = {
                     #${uniqueId} .locallora-lora-card { cursor: pointer; border: 3px solid transparent; border-radius: 8px; background-color: var(--comfy-input-bg); transition: border-color 0.2s; display: flex; flex-direction: column; position: relative; }
                     #${uniqueId} .locallora-lora-card.selected-edit { border-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
                     #${uniqueId} .locallora-lora-card.selected-flow { border-color: #00FFC9; }
-                    #${uniqueId} .locallora-lora-card img { width: 100%; height: 150px; object-fit: cover; border-top-left-radius: 5px; border-top-right-radius: 5px; background-color: #111; }
+                    
+                    #${uniqueId} .locallora-media-container {
+                        width: 100%;
+                        height: 150px;
+                        background-color: #111;
+                        border-top-left-radius: 5px;
+                        border-top-right-radius: 5px;
+                        overflow: hidden;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    #${uniqueId} .locallora-media-container img,
+                    #${uniqueId} .locallora-media-container video {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                    }
+
                     #${uniqueId} .locallora-lora-card-info { padding: 4px; flex-grow: 1; display: flex; flex-direction: column; }
                     #${uniqueId} .locallora-lora-card p { font-size: 11px; margin: 0; word-break: break-all; text-align: center; color: var(--node-text-color); }
                     #${uniqueId} .lora-card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 4px; }
@@ -241,15 +258,30 @@ const LocalLoraGalleryNode = {
                         card.dataset.loraName = lora.name;
                         card.dataset.tags = lora.tags.join(',');
                         card.title = lora.name;
+
+                        let mediaHTML = '';
+                        const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+                        if (lora.preview_type === 'video' && lora.preview_url) {
+                            mediaHTML = `<video muted loop playsinline src="${lora.preview_url}"></video>`;
+                        } else {
+                            mediaHTML = `<img src="${lora.preview_url || empty_lora_image}">`;
+                        }
+
                         card.innerHTML = `
-                            <img src="${lora.preview_url || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}">
+                            <div class="locallora-media-container">
+                                ${mediaHTML}
+                            </div>
                             <div class="locallora-lora-card-info">
                                 <p>${lora.name}</p>
                                 <div class="lora-card-tags"></div>
                             </div>
                             <div class="edit-tags-btn">✏️</div>
                         `;
-                        card.querySelector("img").onerror = (e) => { e.target.style.display = 'none'; };
+
+                        if (lora.preview_type !== 'video') {
+                            card.querySelector("img").onerror = (e) => { e.target.src = empty_lora_image; };
+                        }
                         galleryEl.appendChild(card);
                         
                         if (this.loraData.some(item => item.lora === lora.name)) {
@@ -261,6 +293,19 @@ const LocalLoraGalleryNode = {
 
                         renderCardTags(card);
                         
+                        if (lora.preview_type === 'video') {
+                            const video = card.querySelector('video');
+                            if (video) {
+                                card.addEventListener('mouseenter', () => {
+                                    video.play().catch(e => { /* Ignore errors from autoplay restrictions */ });
+                                });
+                                card.addEventListener('mouseleave', () => {
+                                    video.pause();
+                                    video.currentTime = 0;
+                                });
+                            }
+                        }
+
                         card.addEventListener("click", () => {
                             const loraName = card.dataset.loraName;
                             const existingIndex = this.loraData.findIndex(item => item.lora === loraName);
