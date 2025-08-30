@@ -10,8 +10,16 @@
 
 ![11111111dddd](https://github.com/user-attachments/assets/df866b42-55c2-42e7-ab1b-ff40061e60b2)
 
+---
 
 ## 🇬🇧 English
+
+### Update Log (2025-08-30)
+* **Trigger Word Editor**: You can now add, edit, and save trigger words for each LoRA directly within the editor panel (when a single card is selected).
+* **Download URL**: A new field allows you to save a source/download URL for each LoRA. A link icon (🔗) will appear on the card, allowing you to open the URL in a new browser tab.
+* **Trigger Word Output**: A new trigger_words text output has been added to the node. It automatically concatenates the trigger words of all active LoRAs in the stack, ready to be connected to your prompt nodes.
+
+---
 
 ### Overview
 
@@ -73,6 +81,13 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+
+### 更新日志 (2025-08-30)
+* **触发词编辑器**: 现在您可以直接在编辑面板中为每个LoRA添加、编辑和保存触发词（当选中单个卡片时）。
+* **下载地址**: 新增了一个输入框，用于为每个LoRA保存其来源或下载URL。卡片右上角会出现一个链接图标（🔗），点击即可在新标签页中打开该网址。
+* **触发词输出**: 节点增加了一个新的 trigger_words 文本输出端口。它会自动拼接当前堆栈中所有已启用LoRA的触发词，可以直接连接到您的提示词节点。
+
+---
 
 ### 概述
 

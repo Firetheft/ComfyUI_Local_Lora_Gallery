@@ -14,12 +14,13 @@ const LocalLoraGalleryNode = {
         }
     },
 
-    async updateMetadata(lora_name, tags) {
+    async updateMetadata(lora_name, data) {
         try {
+            const body = { lora_name, ...data };
             await api.fetchApi("/localloragallery/update_metadata", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lora_name, tags }),
+                body: JSON.stringify(body),
             });
         } catch(e) {
             console.error("LocalLoraGallery: Failed to update metadata", e);
@@ -67,6 +68,9 @@ const LocalLoraGalleryNode = {
                     #${uniqueId} .locallora-lora-item .lora-label { font-size: 10px; color: var(--node-text-color); }
                     #${uniqueId} .locallora-controls { display: flex; flex-direction: column; padding: 5px; gap: 5px; flex-shrink: 0; }
                     #${uniqueId} .locallora-controls-row { display: flex; gap: 10px; align-items: center; }
+                    #${uniqueId} .locallora-controls-row input[type=text], #${uniqueId} .locallora-controls-row select {
+                        background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px;
+                    }
                     #${uniqueId} .locallora-gallery { flex-grow: 1; overflow-y: auto; background-color: #1a1a1a; padding: 5px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
                     #${uniqueId} .locallora-gallery::-webkit-scrollbar { width: 8px; }
                     #${uniqueId} .locallora-gallery::-webkit-scrollbar-track { background: #2a2a2a; border-radius: 4px; }
@@ -77,34 +81,44 @@ const LocalLoraGalleryNode = {
                     #${uniqueId} .locallora-lora-card.selected-flow { border-color: #00FFC9; }
                     
                     #${uniqueId} .locallora-media-container {
-                        width: 100%;
-                        height: 150px;
-                        background-color: #111;
-                        border-top-left-radius: 5px;
-                        border-top-right-radius: 5px;
-                        overflow: hidden;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
+                        width: 100%; height: 150px; background-color: #111;
+                        border-top-left-radius: 5px; border-top-right-radius: 5px;
+                        overflow: hidden; display: flex; align-items: center; justify-content: center;
                     }
                     #${uniqueId} .locallora-media-container img,
                     #${uniqueId} .locallora-media-container video {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
+                        width: 100%; height: 100%; object-fit: cover;
                     }
 
                     #${uniqueId} .locallora-lora-card-info { padding: 4px; flex-grow: 1; display: flex; flex-direction: column; }
                     #${uniqueId} .locallora-lora-card p { font-size: 11px; margin: 0; word-break: break-all; text-align: center; color: var(--node-text-color); }
+                    
+                    #${uniqueId} .lora-card-triggers {
+                        font-size: 10px; color: #a5a5a5; padding: 2px 4px; margin-top: 2px;
+                        text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 14px;
+                    }
+
                     #${uniqueId} .lora-card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 4px; }
                     #${uniqueId} .lora-card-tags .tag { background-color: #006699; color: #fff; padding: 1px 4px; font-size: 10px; border-radius: 3px; cursor: pointer; }
                     #${uniqueId} .lora-card-tags .tag:hover { background-color: #0088CC; }
-                    #${uniqueId} .locallora-tag-editor { display: none; }
-                    #${uniqueId} .locallora-tag-editor.visible { display: flex; }
+                    
+                    #${uniqueId} .locallora-metadata-editor { display: none; flex-direction: column; gap: 5px; }
+                    #${uniqueId} .locallora-metadata-editor.visible { display: flex; }
                     #${uniqueId} .tag-editor-list .tag .remove-tag { margin-left: 4px; color: #fdd; cursor: pointer; font-weight: bold; }
-                    #${uniqueId} .edit-tags-btn { position: absolute; bottom: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: background-color 0.2s; opacity: 0; }
-                    #${uniqueId} .locallora-lora-card:hover .edit-tags-btn { opacity: 1; }
-                    #${uniqueId} .edit-tags-btn:hover { background-color: rgba(0,0,0,0.8); }
+                    
+                    #${uniqueId} .edit-tags-btn {
+                        position: absolute; bottom: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5);
+                        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                        font-size: 12px; transition: background-color 0.2s; opacity: 0;
+                    }
+                    #${uniqueId} .lora-card-link-btn {
+                        position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5);
+                        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                        font-size: 14px; cursor: pointer; transition: background-color 0.2s; opacity: 0; text-decoration: none;
+                    }
+                    #${uniqueId} .locallora-lora-card:hover .edit-tags-btn, #${uniqueId} .locallora-lora-card:hover .lora-card-link-btn { opacity: 1; }
+                    #${uniqueId} .edit-tags-btn:hover, #${uniqueId} .lora-card-link-btn:hover { background-color: rgba(0,0,0,0.8); }
+
                     #${uniqueId} .locallora-container.gallery-collapsed .locallora-gallery { display: none; }
                     #${uniqueId} .locallora-lora-item .remove-lora-btn {
                         background: #555; color: #fff; border: none; border-radius: 10%;
@@ -123,19 +137,31 @@ const LocalLoraGalleryNode = {
                         <div class="locallora-controls">
                             <div class="locallora-controls-row">
                                 <button class="toggle-all-btn">Toggle All</button>
-                                <input type="text" class="search-input" placeholder="Filter by Name..." style="flex-grow: 1; background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px;">
+                                <input type="text" class="search-input" placeholder="Filter by Name..." style="flex-grow: 1;">
                                 <button class="clear-all-btn" title="Clear all selected LoRAs">Clear All</button>
                             </div>
-                            <div class="locallora-controls-row locallora-tag-editor">
-                                <label style="font-size:12px;">Edit Tags (<span class="selected-count">0</span>):</label>
-                                <div class="tag-editor-list lora-card-tags" style="flex-grow:1;"></div>
-                                <input type="text" class="tag-editor-input" placeholder="Add tag..." style="width: 100px; background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px;">
+                            
+                            <div class="locallora-metadata-editor">
+                                <div class="locallora-controls-row">
+                                    <label style="font-size:12px;">Edit Tags (<span class="selected-count">0</span>):</label>
+                                    <div class="tag-editor-list lora-card-tags" style="flex-grow:1;"></div>
+                                    <input type="text" class="tag-editor-input" placeholder="Add tag..." style="width: 100px;">
+                                </div>
+                                <div class="locallora-controls-row trigger-editor-row" style="display:none;">
+                                    <label style="font-size:12px;">Triggers:</label>
+                                    <input type="text" class="trigger-editor-input" placeholder="Enter trigger words..." style="flex-grow: 1;">
+                                </div>
+                                <div class="locallora-controls-row url-editor-row" style="display:none;">
+                                    <label style="font-size:12px;">URL:</label>
+                                    <input type="text" class="url-editor-input" placeholder="Enter download URL..." style="flex-grow: 1;">
+                                </div>
                             </div>
+
                             <div class="locallora-controls-row">
                                 <button class="tag-filter-mode-btn" title="Click to switch filter mode">OR</button>
-                                <input type="text" class="tag-filter-input" placeholder="Filter by Tag..." style="flex-grow: 1; background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px;">
+                                <input type="text" class="tag-filter-input" placeholder="Filter by Tag..." style="flex-grow: 1;">
                                 <button class="clear-tag-filter-btn" title="Clear Tag Filter">✖</button>
-                                <select class="tag-filter-presets" style="background: #222; color: #ccc; border: 1px solid #555;"></select>
+                                <select class="tag-filter-presets"></select>
                                 <button class="toggle-gallery-btn" title="Toggle Gallery" style="margin-left: auto; flex-shrink: 0;">Hide Gallery</button>
                             </div>
                         </div>
@@ -148,9 +174,13 @@ const LocalLoraGalleryNode = {
             const selectedListEl = widgetContainer.querySelector(".locallora-selected-list");
             const galleryEl = widgetContainer.querySelector(".locallora-gallery");
             const searchInput = widgetContainer.querySelector(".search-input");
-            const tagEditor = widgetContainer.querySelector(".locallora-tag-editor");
+            const metadataEditor = widgetContainer.querySelector(".locallora-metadata-editor");
             const tagEditorList = widgetContainer.querySelector(".tag-editor-list");
             const tagEditorInput = widgetContainer.querySelector(".tag-editor-input");
+            const triggerEditorRow = widgetContainer.querySelector(".trigger-editor-row");
+            const triggerEditorInput = widgetContainer.querySelector(".trigger-editor-input");
+            const urlEditorRow = widgetContainer.querySelector(".url-editor-row");
+            const urlEditorInput = widgetContainer.querySelector(".url-editor-input");
             const tagFilterInput = widgetContainer.querySelector(".tag-filter-input");
             const tagFilterPresets = widgetContainer.querySelector(".tag-filter-presets");
             const tagFilterModeBtn = widgetContainer.querySelector(".tag-filter-mode-btn");
@@ -257,6 +287,8 @@ const LocalLoraGalleryNode = {
                         card.className = "locallora-lora-card";
                         card.dataset.loraName = lora.name;
                         card.dataset.tags = lora.tags.join(',');
+                        card.dataset.triggerWords = lora.trigger_words;
+                        card.dataset.downloadUrl = lora.download_url;
                         card.title = lora.name;
 
                         let mediaHTML = '';
@@ -267,13 +299,19 @@ const LocalLoraGalleryNode = {
                         } else {
                             mediaHTML = `<img src="${lora.preview_url || empty_lora_image}">`;
                         }
+                        
+                        const linkBtnHTML = lora.download_url 
+                            ? `<a href="${lora.download_url}" target="_blank" class="lora-card-link-btn" title="Open download page">🔗</a>` 
+                            : '';
 
                         card.innerHTML = `
+                            ${linkBtnHTML}
                             <div class="locallora-media-container">
                                 ${mediaHTML}
                             </div>
                             <div class="locallora-lora-card-info">
                                 <p>${lora.name}</p>
+                                <div class="lora-card-triggers" title="${lora.trigger_words}">${lora.trigger_words || 'No triggers'}</div>
                                 <div class="lora-card-tags"></div>
                             </div>
                             <div class="edit-tags-btn">✏️</div>
@@ -284,6 +322,11 @@ const LocalLoraGalleryNode = {
                         }
                         galleryEl.appendChild(card);
                         
+                        const linkBtn = card.querySelector(".lora-card-link-btn");
+                        if (linkBtn) {
+                            linkBtn.addEventListener("click", (e) => e.stopPropagation());
+                        }
+
                         if (this.loraData.some(item => item.lora === lora.name)) {
                             card.classList.add("selected-flow");
                         }
@@ -345,7 +388,7 @@ const LocalLoraGalleryNode = {
                                 }
                             }
                         
-                            renderTagEditor();
+                            renderMetadataEditor();
                         });
                 });
             };
@@ -372,21 +415,18 @@ const LocalLoraGalleryNode = {
                 } catch(e) { console.error("LocalLoraGallery: Failed to load all tags:", e); }
             };
 
-            const renderTagEditor = () => {
-                tagEditorList.innerHTML = "";
+            const renderMetadataEditor = () => {
                 selectedCountEl.textContent = this.selectedCardsForEditing.size;
 
                 if (this.selectedCardsForEditing.size === 0) {
-                    tagEditor.classList.remove("visible");
+                    metadataEditor.classList.remove("visible");
                     return;
                 }
 
-                const allTags = Array.from(this.selectedCardsForEditing).map(card => {
-                    return card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : [];
-                });
-
-                const commonTags = allTags.reduce((acc, tags) => acc.filter(tag => tags.includes(tag)));
-
+                tagEditorList.innerHTML = "";
+                const allTags = Array.from(this.selectedCardsForEditing).map(card => card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : []);
+                const commonTags = allTags.reduce((a, b) => a.filter(c => b.includes(c)));
+                
                 commonTags.forEach(tag => {
                     const tagEl = document.createElement("span");
                     tagEl.className = "tag";
@@ -396,39 +436,38 @@ const LocalLoraGalleryNode = {
                     removeEl.textContent = "ⓧ";
                     removeEl.onclick = async (e) => {
                         e.stopPropagation();
-                        
                         const updatePromises = Array.from(this.selectedCardsForEditing).map(async (card) => {
                             const loraName = card.dataset.loraName;
                             const tags = card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : [];
                             const newTags = tags.filter(t => t !== tag);
+                            
+                            await LocalLoraGalleryNode.updateMetadata(loraName, { tags: newTags });
+
                             card.dataset.tags = newTags.join(',');
-
                             const loraInDataSource = this.availableLoras.find(lora => lora.name === loraName);
-                            if (loraInDataSource) {
-                                loraInDataSource.tags = newTags;
-                            }
-
-                            await LocalLoraGalleryNode.updateMetadata(loraName, newTags);
+                            if (loraInDataSource) loraInDataSource.tags = newTags;
+                            renderCardTags(card);
                         });
-
                         await Promise.all(updatePromises);
-                        
-                        this.selectedCardsForEditing.clear();
-                        
                         await loadAllTags();
-                        renderTagEditor();
-
-                        if (tagFilterInput.value.trim()) {
-                            await fetchAndRender();
-                        } else {
-                            renderGallery();
-                        }
+                        renderMetadataEditor();
                     };
                     tagEl.appendChild(removeEl);
                     tagEditorList.appendChild(tagEl);
                 });
 
-                tagEditor.classList.add("visible");
+                if (this.selectedCardsForEditing.size === 1) {
+                    const selectedCard = Array.from(this.selectedCardsForEditing)[0];
+                    triggerEditorInput.value = selectedCard.dataset.triggerWords || "";
+                    triggerEditorRow.style.display = "flex";
+                    urlEditorInput.value = selectedCard.dataset.downloadUrl || "";
+                    urlEditorRow.style.display = "flex";
+                } else {
+                    triggerEditorRow.style.display = "none";
+                    urlEditorRow.style.display = "none";
+                }
+
+                metadataEditor.classList.add("visible");
             };
             
             const renderCardTags = (card) => {
@@ -472,10 +511,7 @@ const LocalLoraGalleryNode = {
                 if (initialState.is_collapsed) {
                     setTimeout(() => {
                         const controlsEl = widgetContainer.querySelector(".locallora-controls");
-                        if (!controlsEl) {
-                            console.error("LocalLoraGallery: Could not find controls element for size calculation.");
-                            return;
-                        }
+                        if (!controlsEl) return;
                         const contentHeight = selectedListEl.scrollHeight + controlsEl.offsetHeight;
                         this.size[1] = contentHeight + HEADER_HEIGHT;
                         mainContainer.classList.add("gallery-collapsed");
@@ -493,7 +529,97 @@ const LocalLoraGalleryNode = {
                         if (this.selectedCardsForEditing.size > 0) {
                             document.querySelectorAll(`#${uniqueId} .locallora-lora-card.selected-edit`).forEach(c => c.classList.remove("selected-edit"));
                             this.selectedCardsForEditing.clear();
-                            renderTagEditor();
+                            renderMetadataEditor();
+                        }
+                    }
+                });
+
+                urlEditorInput.addEventListener("keydown", async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (this.selectedCardsForEditing.size !== 1) return;
+
+                        const selectedCard = Array.from(this.selectedCardsForEditing)[0];
+                        const loraName = selectedCard.dataset.loraName;
+                        const newUrl = urlEditorInput.value.trim();
+
+                        await LocalLoraGalleryNode.updateMetadata(loraName, { download_url: newUrl });
+
+                        selectedCard.dataset.downloadUrl = newUrl;
+                        const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
+                        if (loraInDataSource) loraInDataSource.download_url = newUrl;
+                        
+                        let linkBtn = selectedCard.querySelector('.lora-card-link-btn');
+                        if (newUrl) {
+                            if (!linkBtn) {
+                                linkBtn = document.createElement('a');
+                                linkBtn.className = 'lora-card-link-btn';
+                                linkBtn.title = 'Open download page';
+                                linkBtn.innerHTML = '🔗';
+                                linkBtn.target = '_blank';
+                                linkBtn.addEventListener("click", (e) => e.stopPropagation());
+                                selectedCard.prepend(linkBtn);
+                            }
+                            linkBtn.href = newUrl;
+                        } else if (linkBtn) {
+                            linkBtn.remove();
+                        }
+
+                        const originalColor = urlEditorInput.style.backgroundColor;
+                        urlEditorInput.style.backgroundColor = "#2a5";
+                        setTimeout(() => { urlEditorInput.style.backgroundColor = ""; }, 500);
+                    }
+                });
+
+                triggerEditorInput.addEventListener("keydown", async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (this.selectedCardsForEditing.size !== 1) return;
+
+                        const selectedCard = Array.from(this.selectedCardsForEditing)[0];
+                        const loraName = selectedCard.dataset.loraName;
+                        const newTriggers = triggerEditorInput.value.trim();
+
+                        await LocalLoraGalleryNode.updateMetadata(loraName, { trigger_words: newTriggers });
+
+                        selectedCard.dataset.triggerWords = newTriggers;
+                        const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
+                        if (loraInDataSource) loraInDataSource.trigger_words = newTriggers;
+                        
+                        const triggerDisplayEl = selectedCard.querySelector('.lora-card-triggers');
+                        if(triggerDisplayEl) {
+                            triggerDisplayEl.textContent = newTriggers || 'No triggers';
+                            triggerDisplayEl.title = newTriggers;
+                        }
+                        
+                        const originalColor = triggerEditorInput.style.backgroundColor;
+                        triggerEditorInput.style.backgroundColor = "#2a5";
+                        setTimeout(() => { triggerEditorInput.style.backgroundColor = ""; }, 500);
+                    }
+                });
+                
+                tagEditorInput.addEventListener("keydown", async (e) => {
+                    if (e.key === 'Enter' && tagEditorInput.value.trim()) {
+                        e.preventDefault();
+                        const newTag = tagEditorInput.value.trim();
+                        if (newTag) {
+                            const updatePromises = Array.from(this.selectedCardsForEditing).map(async (card) => {
+                                const loraName = card.dataset.loraName;
+                                const tags = card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : [];
+                                
+                                if (!tags.includes(newTag)) {
+                                    tags.push(newTag);
+                                    await LocalLoraGalleryNode.updateMetadata(loraName, { tags: tags });
+                                    card.dataset.tags = tags.join(',');
+                                    const loraInDataSource = this.availableLoras.find(lora => lora.name === loraName);
+                                    if (loraInDataSource) loraInDataSource.tags = [...tags];
+                                    renderCardTags(card);
+                                }
+                            });
+                            await Promise.all(updatePromises);
+                            await loadAllTags();
+                            renderMetadataEditor();
+                            e.target.value = "";
                         }
                     }
                 });
@@ -508,10 +634,7 @@ const LocalLoraGalleryNode = {
                     if (mainContainer.classList.contains("gallery-collapsed")) {
                         setTimeout(() => {
                             const controlsEl = widgetContainer.querySelector(".locallora-controls");
-                            if (!controlsEl) {
-                                console.error("LocalLoraGallery: Could not find controls element for size calculation.");
-                                return;
-                            }
+                            if (!controlsEl) return;
                             const contentHeight = selectedListEl.scrollHeight + controlsEl.offsetHeight;
                             this.size[1] = contentHeight + HEADER_HEIGHT;
                             this.setDirtyCanvas(true, true);
@@ -563,35 +686,7 @@ const LocalLoraGalleryNode = {
 
                 searchInput.addEventListener("input", renderGallery);
                 tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') fetchAndRender(); });
-                tagEditorInput.addEventListener("keydown", async (e) => {
-                    if (e.key === 'Enter' && this.selectedCardsForEditing.size > 0) {
-                        e.preventDefault();
-                        const newTag = e.target.value.trim();
-                        if (newTag) {
-                            const updatePromises = Array.from(this.selectedCardsForEditing).map(async (card) => {
-                                const loraName = card.dataset.loraName;
-                                const tags = card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : [];
-                                
-                                if (!tags.includes(newTag)) {
-                                    tags.push(newTag);
-                                    card.dataset.tags = tags.join(',');
-                                    await LocalLoraGalleryNode.updateMetadata(loraName, tags);
-
-                                    const loraInDataSource = this.availableLoras.find(lora => lora.name === loraName);
-                                    if (loraInDataSource) {
-                                        loraInDataSource.tags = [...tags];
-                                    }
-                                    renderCardTags(card);
-                                }
-                            });
-
-                            await Promise.all(updatePromises);
-                            await loadAllTags();
-                            renderTagEditor();
-                            e.target.value = "";
-                        }
-                    }
-                });
+                
                 tagFilterPresets.addEventListener('change', () => {
                     if (tagFilterPresets.value) {
                         tagFilterInput.value = tagFilterPresets.value;
@@ -603,20 +698,12 @@ const LocalLoraGalleryNode = {
 
             this.onResize = function(size) {
                 const controlsEl = widgetContainer.querySelector(".locallora-controls");
-
-                const dynamicMinHeight = selectedListEl.scrollHeight + controlsEl.offsetHeight + HEADER_HEIGHT;
-
+                const dynamicMinHeight = selectedListEl.scrollHeight + (controlsEl?.offsetHeight || 0) + HEADER_HEIGHT;
                 if (!mainContainer.classList.contains("gallery-collapsed")) {
                     this.expandedHeight = size[1];
                 }
-
-                if (size[1] < dynamicMinHeight) {
-                    size[1] = dynamicMinHeight;
-                }
-
-                if (size[0] < MIN_NODE_WIDTH) {
-                    size[0] = MIN_NODE_WIDTH;
-                }
+                if (size[1] < dynamicMinHeight) size[1] = dynamicMinHeight;
+                if (size[0] < MIN_NODE_WIDTH) size[0] = MIN_NODE_WIDTH;
             };
 
             bindEventListeners();
