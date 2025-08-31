@@ -44,7 +44,7 @@ const LocalLoraGalleryNode = {
         nodeType.prototype.onNodeCreated = function () {
             const result = onNodeCreated?.apply(this, arguments);
             
-            const HEADER_HEIGHT = 75;
+            const HEADER_HEIGHT = 90;
             const MIN_NODE_WIDTH = 600;
 
             this.size = [700, 600];
@@ -130,6 +130,41 @@ const LocalLoraGalleryNode = {
                         border-radius: 4px; cursor: pointer; flex-shrink: 0;
                     }
                     #${uniqueId} .tag-filter-mode-btn:hover { background-color: #666; }
+                    #${uniqueId} .locallora-multiselect-tag { position: relative; flex-grow: 1; }
+                    #${uniqueId} .locallora-multiselect-tag-display { 
+                        background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 10px;
+                        height: 23px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+                    }
+                    #${uniqueId} .locallora-multiselect-arrow {
+                        position: absolute;
+                        right: 8px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        transition: transform 0.2s ease-in-out;
+                        font-size: 10px;
+                        pointer-events: none;
+                    }
+                    #${uniqueId} .locallora-multiselect-arrow.open {
+                        transform: translateY(-50%) rotate(180deg);
+                    }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown {
+                        display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: #222;
+                        border: 1px solid #555; border-top: none; max-height: 200px; overflow-y: auto; z-index: 10;
+                    }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown label {
+                        display: block; padding: 0px 0px; cursor: pointer; font-size: 12px; color: #ccc;
+                    }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown label:hover { background-color: #444; }
+                    #${uniqueId} .tag-filter-input-wrapper { display: flex; flex-grow: 1; position: relative; align-items: center; }
+                    #${uniqueId} .tag-filter-input-wrapper input { flex-grow: 1; }
+                    #${uniqueId} .clear-tag-filter-btn {
+                        background: none; border: none; color: #ccc; cursor: pointer; 
+                        position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+                        display: none;
+                    }
+                    #${uniqueId} .tag-filter-input-wrapper input:not(:placeholder-shown) + .clear-tag-filter-btn {
+                        display: block;
+                    }
                 </style>
                 <div id="${uniqueId}" style="height: 100%;">
                     <div class="locallora-container">
@@ -159,9 +194,17 @@ const LocalLoraGalleryNode = {
 
                             <div class="locallora-controls-row">
                                 <button class="tag-filter-mode-btn" title="Click to switch filter mode">OR</button>
-                                <input type="text" class="tag-filter-input" placeholder="Filter by Tag..." style="flex-grow: 1;">
-                                <button class="clear-tag-filter-btn" title="Clear Tag Filter">✖</button>
-                                <select class="tag-filter-presets"></select>
+                                <div class="tag-filter-input-wrapper">
+                                    <input type="text" class="tag-filter-input" placeholder="Filter by Tag...">
+                                    <button class="clear-tag-filter-btn" title="Clear Tag Filter">✖</button>
+                                </div>
+                                <div class="locallora-multiselect-tag">
+                                    <div class="locallora-multiselect-tag-display">
+                                        Select Tags
+                                        <span class="locallora-multiselect-arrow">▼</span>
+                                    </div>
+                                    <div class="locallora-multiselect-tag-dropdown"></div>
+                                </div>
                                 <button class="toggle-gallery-btn" title="Toggle Gallery" style="margin-left: auto; flex-shrink: 0;">Hide Gallery</button>
                             </div>
                         </div>
@@ -182,10 +225,13 @@ const LocalLoraGalleryNode = {
             const urlEditorRow = widgetContainer.querySelector(".url-editor-row");
             const urlEditorInput = widgetContainer.querySelector(".url-editor-input");
             const tagFilterInput = widgetContainer.querySelector(".tag-filter-input");
-            const tagFilterPresets = widgetContainer.querySelector(".tag-filter-presets");
+            const multiSelectTagContainer = widgetContainer.querySelector(".locallora-multiselect-tag");
+            const multiSelectTagDisplay = multiSelectTagContainer.querySelector(".locallora-multiselect-tag-display");
+            const multiSelectTagDropdown = multiSelectTagContainer.querySelector(".locallora-multiselect-tag-dropdown");
             const tagFilterModeBtn = widgetContainer.querySelector(".tag-filter-mode-btn");
             const toggleGalleryBtn = widgetContainer.querySelector(".toggle-gallery-btn");
             const selectedCountEl = widgetContainer.querySelector(".selected-count");
+            const clearTagFilterBtn = widgetContainer.querySelector(".clear-tag-filter-btn");
 
             const sortAndPinLoras = () => {
                 const selectedNames = new Set(this.loraData.map(item => item.lora));
@@ -401,15 +447,27 @@ const LocalLoraGalleryNode = {
                 renderGallery();
             };
 
+            const handleTagSelectionChange = () => {
+                const selectedTags = Array.from(multiSelectTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+                tagFilterInput.value = selectedTags.join(',');
+                fetchAndRender();
+            };
+
             const loadAllTags = async () => {
                 try {
                     const response = await api.fetchApi("/localloragallery/get_all_tags");
                     const data = await response.json();
-                    tagFilterPresets.innerHTML = '<option value="">Select a Tag</option>';
+                    multiSelectTagDropdown.innerHTML = '';
                     if (data.tags) {
                         data.tags.forEach(tag => {
-                            const option = new Option(tag, tag);
-                            tagFilterPresets.add(option);
+                            const label = document.createElement('label');
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.value = tag;
+                            checkbox.addEventListener('change', handleTagSelectionChange);
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(` ${tag}`));
+                            multiSelectTagDropdown.appendChild(label);
                         });
                     }
                 } catch(e) { console.error("LocalLoraGallery: Failed to load all tags:", e); }
@@ -624,8 +682,9 @@ const LocalLoraGalleryNode = {
                     }
                 });
 
-                widgetContainer.querySelector(".clear-tag-filter-btn").addEventListener("click", () => {
+                clearTagFilterBtn.addEventListener("click", () => {
                     tagFilterInput.value = "";
+                    multiSelectTagDropdown.querySelectorAll('input:checked').forEach(cb => cb.checked = false);
                     fetchAndRender();
                 });
 
@@ -687,11 +746,17 @@ const LocalLoraGalleryNode = {
                 searchInput.addEventListener("input", renderGallery);
                 tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') fetchAndRender(); });
                 
-                tagFilterPresets.addEventListener('change', () => {
-                    if (tagFilterPresets.value) {
-                        tagFilterInput.value = tagFilterPresets.value;
-                        fetchAndRender();
-                        tagFilterPresets.value = "";
+                const arrow = multiSelectTagContainer.querySelector('.locallora-multiselect-arrow');
+                multiSelectTagDisplay.addEventListener('click', () => {
+                    const isVisible = multiSelectTagDropdown.style.display === 'block';
+                    multiSelectTagDropdown.style.display = isVisible ? 'none' : 'block';
+                    arrow.classList.toggle('open', !isVisible);
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!multiSelectTagContainer.contains(e.target)) {
+                        multiSelectTagDropdown.style.display = 'none';
+                        arrow.classList.remove('open');
                     }
                 });
             };

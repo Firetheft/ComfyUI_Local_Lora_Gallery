@@ -219,9 +219,9 @@ class BaseLoraGallery:
     
     @classmethod
     def IS_CHANGED(cls, **kwargs):
-        if os.path.exists(SELECTIONS_FILE):
-            return os.path.getmtime(SELECTIONS_FILE)
-        return float("inf")
+        selections_mtime = os.path.getmtime(SELECTIONS_FILE) if os.path.exists(SELECTIONS_FILE) else -1
+        metadata_mtime = os.path.getmtime(METADATA_FILE) if os.path.exists(METADATA_FILE) else -1
+        return selections_mtime + metadata_mtime
 
     def _is_nunchaku_model(self, model):
         """Checks if the model is a Nunchaku-accelerated model."""

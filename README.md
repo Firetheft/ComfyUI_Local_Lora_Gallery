@@ -14,6 +14,9 @@
 
 ## 🇬🇧 English
 
+### Update Log (2025-08-31)
+* **Multi-Select Dropdown**: The previous tag filter has been upgraded to a full-featured multi-select dropdown menu, allowing you to combine multiple tags by checking them.
+
 ### Update Log (2025-08-30)
 * **Trigger Word Editor**: You can now add, edit, and save trigger words for each LoRA directly within the editor panel (when a single card is selected).
 * **Download URL**: A new field allows you to save a source/download URL for each LoRA. A link icon (🔗) will appear on the card, allowing you to open the URL in a new browser tab.
@@ -81,6 +84,9 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+
+### 更新日志 (2025-08-31)
+* **多选下拉菜单**: 原有的标签筛选器已升级为功能完善的多选下拉菜单，允许您通过勾选来组合多个标签进行筛选。
 
 ### 更新日志 (2025-08-30)
 * **触发词编辑器**: 现在您可以直接在编辑面板中为每个LoRA添加、编辑和保存触发词（当选中单个卡片时）。
