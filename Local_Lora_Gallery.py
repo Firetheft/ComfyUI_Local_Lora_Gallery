@@ -132,11 +132,16 @@ async def set_ui_state(request):
     try:
         data = await request.json()
         node_id = str(data.get("node_id"))
+        gallery_id = data.get("gallery_id")
         state = data.get("state", {})
+
+        if not gallery_id: return web.Response(status=400)
+
+        node_key = f"{gallery_id}_{node_id}"
         ui_states = load_ui_state()
-        if node_id not in ui_states:
-            ui_states[node_id] = {}
-        ui_states[node_id].update(state)
+        if node_key not in ui_states:
+            ui_states[node_key] = {}
+        ui_states[node_key].update(state)
         save_ui_state(ui_states)
         return web.json_response({"status": "ok"})
     except Exception as e:
@@ -146,10 +151,14 @@ async def set_ui_state(request):
 async def get_ui_state(request):
     try:
         node_id = request.query.get('node_id')
-        if not node_id:
-            return web.json_response({"error": "node_id is required"}, status=400)
+        gallery_id = request.query.get('gallery_id')
+
+        if not node_id or not gallery_id:
+            return web.json_response({"error": "node_id or gallery_id is required"}, status=400)
+
+        node_key = f"{gallery_id}_{node_id}"
         ui_states = load_ui_state()
-        node_state = ui_states.get(str(node_id), {"is_collapsed": False})
+        node_state = ui_states.get(node_key, {"is_collapsed": False})
         return web.json_response(node_state)
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
@@ -158,8 +167,14 @@ async def get_ui_state(request):
 async def set_lora_selection(request):
     try:
         data = await request.json()
+        node_id = str(data.get("node_id"))
+        gallery_id = data.get("gallery_id")
+
+        if not gallery_id: return web.Response(status=400)
+
+        node_key = f"{gallery_id}_{node_id}"
         selections = load_selections()
-        selections[str(data.get("node_id"))] = data.get("lora_stack", [])
+        selections[node_key] = data.get("lora_stack", [])
         save_selections(selections)
         return web.json_response({"status": "ok"})
     except Exception as e:
@@ -208,9 +223,12 @@ async def get_all_tags(request):
 async def get_lora_selection(request):
     try:
         node_id = request.query.get('node_id')
-        if not node_id:
-            return web.json_response({"error": "node_id is required"}, status=400)
-        return web.json_response({"lora_stack": load_selections().get(str(node_id), [])})
+        gallery_id = request.query.get('gallery_id')
+        if not node_id or not gallery_id:
+            return web.json_response({"error": "node_id or gallery_id is required"}, status=400)
+
+        node_key = f"{gallery_id}_{node_id}"
+        return web.json_response({"lora_stack": load_selections().get(node_key, [])})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -232,24 +250,32 @@ class BaseLoraGallery:
 class LocalLoraGallery(BaseLoraGallery):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"model": ("MODEL",), "clip": ("CLIP",)}, "hidden": {"unique_id": "UNIQUE_ID"}}
-    
+        return {
+            "required": {"model": ("MODEL",), "clip": ("CLIP",)}, 
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "lora_gallery_unique_id_widget": ("STRING", {"default": "", "multiline": False}),
+            }
+        }
+
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "trigger_words")
-    
+
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Local"
 
-    def load_loras(self, model, clip, unique_id, **kwargs):
-        lora_configs = load_selections().get(str(unique_id), [])
+    def load_loras(self, model, clip, unique_id, lora_gallery_unique_id_widget="", **kwargs):
+        node_key = f"{lora_gallery_unique_id_widget}_{str(unique_id)}"
+        lora_configs = load_selections().get(node_key, [])
+
         all_metadata = load_metadata()
         trigger_words_list = []
-        
+
         current_model, current_clip = model, clip
         applied_count = 0
 
         use_nunchaku_loader = self._is_nunchaku_model(model)
-        
+
         loader_instance = NunchakuFluxLoraLoader() if use_nunchaku_loader else LoraLoader()
         print(f"LocalLoraGallery: Using {'NunchakuFluxLoraLoader' if use_nunchaku_loader else 'standard LoraLoader'}.")
 
@@ -258,7 +284,7 @@ class LocalLoraGallery(BaseLoraGallery):
                 continue
 
             lora_name = config['lora']
-            
+
             lora_meta = all_metadata.get(lora_name, {})
             triggers = lora_meta.get('trigger_words', '').strip()
             if triggers:
@@ -270,25 +296,31 @@ class LocalLoraGallery(BaseLoraGallery):
 
                 if strength_model == 0 and strength_clip == 0:
                     continue
-                
+
                 if use_nunchaku_loader:
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     current_model, current_clip = loader_instance.load_lora(current_model, current_clip, lora_name, strength_model, strength_clip)
-                
+
                 applied_count += 1
             except Exception as e:
                 print(f"LocalLoraGallery: Failed to load LoRA '{lora_name}': {e}")
-        
+
         print(f"LocalLoraGallery: Applied {applied_count} LoRAs.")
-        
+
         trigger_words_string = ", ".join(trigger_words_list)
         return (current_model, current_clip, trigger_words_string)
 
 class LocalLoraGalleryModelOnly(BaseLoraGallery):
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"model": ("MODEL",)}, "hidden": {"unique_id": "UNIQUE_ID"}}
+        return {
+            "required": {"model": ("MODEL",)}, 
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "lora_gallery_unique_id_widget": ("STRING", {"default": "", "multiline": False}),
+            }
+        }
 
     RETURN_TYPES = ("MODEL", "STRING")
     RETURN_NAMES = ("MODEL", "trigger_words")
@@ -296,8 +328,9 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Local"
 
-    def load_loras(self, model, unique_id, **kwargs):
-        lora_configs = load_selections().get(str(unique_id), [])
+    def load_loras(self, model, unique_id, lora_gallery_unique_id_widget="", **kwargs):
+        node_key = f"{lora_gallery_unique_id_widget}_{str(unique_id)}"
+        lora_configs = load_selections().get(node_key, [])
         all_metadata = load_metadata()
         trigger_words_list = []
 
@@ -305,21 +338,21 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
         applied_count = 0
 
         use_nunchaku_loader = self._is_nunchaku_model(model)
-        
+
         loader_instance = NunchakuFluxLoraLoader() if use_nunchaku_loader else LoraLoaderModelOnly()
         print(f"LocalLoraGalleryModelOnly: Using {'NunchakuFluxLoraLoader' if use_nunchaku_loader else 'standard LoraLoaderModelOnly'}.")
 
         for config in lora_configs:
             if not config.get('on', True) or not config.get('lora'):
                 continue
-            
+
             lora_name = config['lora']
-            
+
             lora_meta = all_metadata.get(lora_name, {})
             triggers = lora_meta.get('trigger_words', '').strip()
             if triggers:
                 trigger_words_list.append(triggers)
-            
+
             try:
                 strength_model = float(config.get('strength', 1.0))
                 if strength_model == 0:
@@ -329,13 +362,13 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     (current_model,) = loader_instance.load_lora_model_only(current_model, lora_name, strength_model)
-                
+
                 applied_count += 1
             except Exception as e:
                 print(f"LocalLoraGalleryModelOnly: Failed to load LoRA '{lora_name}': {e}")
-        
+
         print(f"LocalLoraGalleryModelOnly: Applied {applied_count} LoRAs.")
-        
+
         trigger_words_string = ", ".join(trigger_words_list)
         return (current_model, trigger_words_string)
 

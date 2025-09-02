@@ -14,6 +14,9 @@
 
 ## 🇬🇧 English
 
+### Changelog (2025-09-02)
+* **Optimized Unique ID**: Each gallery node now automatically generates and stores its own unique ID, which is synchronized with the workflow. This completely avoids conflicts between different workflows or nodes.
+
 ### Update Log (2025-08-31)
 * **Multi-Select Dropdown**: The previous tag filter has been upgraded to a full-featured multi-select dropdown menu, allowing you to combine multiple tags by checking them.
 
@@ -84,6 +87,9 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+
+### 更新日志 (2025-09-02)
+* **优化唯一 ID**：每个图库节点现在都会自动生成并保存其专属的唯一 ID，并与工作流程同步。这完全避免了不同工作流程或节点之间的冲突。
 
 ### 更新日志 (2025-08-31)
 * **多选下拉菜单**: 原有的标签筛选器已升级为功能完善的多选下拉菜单，允许您通过勾选来组合多个标签进行筛选。
