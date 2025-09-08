@@ -27,14 +27,14 @@ const LocalLoraGalleryNode = {
         }
     },
 
-    async setUiState(nodeId, state) {
+    async setUiState(nodeId, galleryId, state) {
         try {
             await api.fetchApi("/localloragallery/set_ui_state", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     node_id: nodeId, 
-                    gallery_id: this.properties.lora_gallery_unique_id, 
+                    gallery_id: galleryId,
                     state: state 
                 }),
             });
@@ -52,8 +52,6 @@ const LocalLoraGalleryNode = {
                 if (!this.properties) { this.properties = {}; }
                 this.properties.lora_gallery_unique_id = "lora-gallery-" + Math.random().toString(36).substring(2, 11);
             }
-
-            const node_instance = this;
 
             const galleryIdWidget = this.addWidget(
                 "text",
@@ -80,6 +78,20 @@ const LocalLoraGalleryNode = {
             this.availableLoras = [];
             this.isModelOnly = nodeData.name.includes("ModelOnly");
             this.selectedCardsForEditing = new Set(); 
+
+            const node_instance = this;
+            const selectionWidget = this.addWidget(
+                "text",
+                "selection_data",
+                this.properties.selection_data || "[]",
+                () => {},
+                { multiline: true }
+            );
+            selectionWidget.serializeValue = () => {
+                return node_instance.properties["selection_data"] || "[]";
+            };
+            selectionWidget.draw = function(ctx, node, widget_width, y, widget_height) {};
+            selectionWidget.computeSize = function(width) { return [0, -4]; };
 
             const widgetContainer = document.createElement("div");
             widgetContainer.className = "locallora-container-wrapper";
@@ -274,15 +286,19 @@ const LocalLoraGalleryNode = {
 
             const updateSelection = () => {
                 const serializableData = this.loraData.map(({ element, ...rest }) => rest);
-                api.fetchApi("/localloragallery/set_selection", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        node_id: this.id, 
-                        gallery_id: this.properties.lora_gallery_unique_id, 
-                        lora_stack: serializableData 
-                    }),
-                }).catch(e => console.error("LocalLoraGallery: Failed to send selection to backend:", e));
+                const selectionJson = JSON.stringify(serializableData);
+
+                this.setProperty("selection_data", selectionJson);
+
+                const widget = this.widgets.find(w => w.name === "selection_data");
+                if (widget) {
+                    widget.value = selectionJson;
+                }
+
+                LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
+                    is_collapsed: mainContainer.classList.contains("gallery-collapsed"),
+                    lora_stack: serializableData 
+                });
             };
             
             const renderSelectedList = () => {
@@ -578,19 +594,25 @@ const LocalLoraGalleryNode = {
             };
             
             this.initializeNode = async () => {
-                let initialState = { is_collapsed: false };
+                let initialState = { is_collapsed: false, lora_stack: [] };
                 try {
                     const res = await api.fetchApi(`/localloragallery/get_ui_state?node_id=${this.id}&gallery_id=${this.properties.lora_gallery_unique_id}`);
-                    initialState = await res.json();
-                } catch(e) { console.error("LocalLoraGallery: Failed to get initial UI state.", e); }
+                    const loadedState = await res.json();
+                    initialState = { ...initialState, ...loadedState };
+                } catch(e) { 
+                    console.error("LocalLoraGallery: Failed to get initial UI state.", e); 
+                }
 
-                try {
-                    const res = await api.fetchApi(`/localloragallery/get_selection?node_id=${this.id}&gallery_id=${this.properties.lora_gallery_unique_id}`);
-                    const data = await res.json();
-                    if (data.lora_stack) { this.loraData = data.lora_stack; }
-                } catch (e) { this.loraData = []; }
+                this.loraData = initialState.lora_stack || [];
+                const selectionJson = JSON.stringify(this.loraData);
+                this.setProperty("selection_data", selectionJson);
+                const widget = this.widgets.find(w => w.name === "selection_data");
+                if (widget) {
+                    widget.value = selectionJson;
+                }
 
                 await loadAllTags();
+                
                 const tagFilter = tagFilterInput.value;
                 this.availableLoras = await LocalLoraGalleryNode.getLoras(tagFilter);
                 
@@ -764,7 +786,10 @@ const LocalLoraGalleryNode = {
                         toggleGalleryBtn.textContent = "Hide Gallery";
                     }
                     
-                    LocalLoraGalleryNode.setUiState(this.id, { is_collapsed: isCollapsing });
+                    LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
+                        is_collapsed: isCollapsing,
+                        lora_stack: this.loraData.map(({ element, ...rest }) => rest)
+                    });
                     app.graph.setDirty(true);
                 });
 

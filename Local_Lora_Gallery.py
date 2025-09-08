@@ -19,7 +19,6 @@ except Exception as e:
 
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
-SELECTIONS_FILE = os.path.join(NODE_DIR, "lora_gallery_selections.json")
 METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
 
@@ -47,8 +46,6 @@ load_metadata = lambda: load_json_file(METADATA_FILE)
 save_metadata = lambda data: save_json_file(data, METADATA_FILE)
 load_ui_state = lambda: load_json_file(UI_STATE_FILE)
 save_ui_state = lambda data: save_json_file(data, UI_STATE_FILE)
-load_selections = lambda: load_json_file(SELECTIONS_FILE)
-save_selections = lambda data: save_json_file(data, SELECTIONS_FILE)
 
 def get_lora_preview_asset(lora_name):
     """Finds a preview asset (image or video) for a given LoRA."""
@@ -163,23 +160,6 @@ async def get_ui_state(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.post("/localloragallery/set_selection")
-async def set_lora_selection(request):
-    try:
-        data = await request.json()
-        node_id = str(data.get("node_id"))
-        gallery_id = data.get("gallery_id")
-
-        if not gallery_id: return web.Response(status=400)
-
-        node_key = f"{gallery_id}_{node_id}"
-        selections = load_selections()
-        selections[node_key] = data.get("lora_stack", [])
-        save_selections(selections)
-        return web.json_response({"status": "ok"})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)}, status=500)
-
 @server.PromptServer.instance.routes.post("/localloragallery/update_metadata")
 async def update_lora_metadata(request):
     try:
@@ -219,27 +199,12 @@ async def get_all_tags(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.get("/localloragallery/get_selection")
-async def get_lora_selection(request):
-    try:
-        node_id = request.query.get('node_id')
-        gallery_id = request.query.get('gallery_id')
-        if not node_id or not gallery_id:
-            return web.json_response({"error": "node_id or gallery_id is required"}, status=400)
-
-        node_key = f"{gallery_id}_{node_id}"
-        return web.json_response({"lora_stack": load_selections().get(node_key, [])})
-    except Exception as e:
-        return web.json_response({"status": "error", "message": str(e)}, status=500)
-
 class BaseLoraGallery:
     """Base class for common functionality."""
     
     @classmethod
-    def IS_CHANGED(cls, **kwargs):
-        selections_mtime = os.path.getmtime(SELECTIONS_FILE) if os.path.exists(SELECTIONS_FILE) else -1
-        metadata_mtime = os.path.getmtime(METADATA_FILE) if os.path.exists(METADATA_FILE) else -1
-        return selections_mtime + metadata_mtime
+    def IS_CHANGED(cls, selection_data, **kwargs):
+        return selection_data
 
     def _is_nunchaku_model(self, model):
         """Checks if the model is a Nunchaku-accelerated model."""
@@ -254,7 +219,7 @@ class LocalLoraGallery(BaseLoraGallery):
             "required": {"model": ("MODEL",), "clip": ("CLIP",)}, 
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "lora_gallery_unique_id_widget": ("STRING", {"default": "", "multiline": False}),
+                "selection_data": ("STRING", {"default": "[]", "multiline": True, "forceInput": True})
             }
         }
 
@@ -264,9 +229,11 @@ class LocalLoraGallery(BaseLoraGallery):
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Local"
 
-    def load_loras(self, model, clip, unique_id, lora_gallery_unique_id_widget="", **kwargs):
-        node_key = f"{lora_gallery_unique_id_widget}_{str(unique_id)}"
-        lora_configs = load_selections().get(node_key, [])
+    def load_loras(self, model, clip, unique_id, selection_data="[]", **kwargs):
+        try:
+            lora_configs = json.loads(selection_data)
+        except:
+            lora_configs = []
 
         all_metadata = load_metadata()
         trigger_words_list = []
@@ -318,7 +285,7 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
             "required": {"model": ("MODEL",)}, 
             "hidden": {
                 "unique_id": "UNIQUE_ID",
-                "lora_gallery_unique_id_widget": ("STRING", {"default": "", "multiline": False}),
+                "selection_data": ("STRING", {"default": "[]", "multiline": True, "forceInput": True})
             }
         }
 
@@ -328,9 +295,12 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Local"
 
-    def load_loras(self, model, unique_id, lora_gallery_unique_id_widget="", **kwargs):
-        node_key = f"{lora_gallery_unique_id_widget}_{str(unique_id)}"
-        lora_configs = load_selections().get(node_key, [])
+    def load_loras(self, model, unique_id, selection_data="[]", **kwargs):
+        try:
+            lora_configs = json.loads(selection_data)
+        except:
+            lora_configs = []
+
         all_metadata = load_metadata()
         trigger_words_list = []
 
