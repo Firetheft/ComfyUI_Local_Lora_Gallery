@@ -13,14 +13,19 @@
 ---
 
 ## 🇬🇧 English
+### Changelog (2025-09-12)
+* **Preset Management**: You can now save your favorite LoRA stacks as presets and load them with a single click.
+* **Folder Filtering**: A new dropdown menu allows you to filter LoRAs by their subfolder, making it easier to manage large collections.
+* **Drag-and-Drop Sorting**: The selected LoRAs in the stack can now be easily reordered by dragging and dropping them.
+* **Performance Optimization**: The gallery now uses lazy loading to load LoRA cards dynamically as you scroll, significantly improving performance and reducing initial load times.
 
 ### Changelog (2025-09-02)
 * **Optimized Unique ID**: Each gallery node now automatically generates and stores its own unique ID, which is synchronized with the workflow. This completely avoids conflicts between different workflows or nodes.
 
-### Update Log (2025-08-31)
+### Changelog (2025-08-31)
 * **Multi-Select Dropdown**: The previous tag filter has been upgraded to a full-featured multi-select dropdown menu, allowing you to combine multiple tags by checking them.
 
-### Update Log (2025-08-30)
+### Changelog (2025-08-30)
 * **Trigger Word Editor**: You can now add, edit, and save trigger words for each LoRA directly within the editor panel (when a single card is selected).
 * **Download URL**: A new field allows you to save a source/download URL for each LoRA. A link icon (🔗) will appear on the card, allowing you to open the URL in a new browser tab.
 * **Trigger Word Output**: A new trigger_words text output has been added to the node. It automatically concatenates the trigger words of all active LoRAs in the stack, ready to be connected to your prompt nodes.
@@ -87,6 +92,11 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+### 更新日志 (2025-09-12)
+* **预设管理**: 现在您可以将常用的 LoRA 堆栈保存为预设，并一键加载。
+* **文件夹筛选**: 新增了文件夹筛选下拉菜单，可以按子文件夹显示 LoRA，便于管理庞大的模型库。
+* **拖拽排序**: 现在可以通过拖拽轻松调整已选 LoRA 在堆栈中的应用顺序。
+* **性能优化**: 画廊现在采用懒加载技术，滚动时动态加载 LoRA 卡片，显著提升了性能和初次加载速度。
 
 ### 更新日志 (2025-09-02)
 * **优化唯一 ID**：每个图库节点现在都会自动生成并保存其专属的唯一 ID，并与工作流程同步。这完全避免了不同工作流程或节点之间的冲突。

@@ -17,23 +17,25 @@ try:
 except Exception as e:
     print(f"INFO: Local Lora Gallery - Nunchaku nodes not found. Running in standard mode. Error: {e}")
 
-
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
-
+PRESETS_FILE = os.path.join(NODE_DIR, "lora_gallery_presets.json")
 VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi']
 IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif']
 
-def load_json_file(file_path):
+def load_json_file(file_path, default_data={}):
     if not os.path.exists(file_path):
-        return {}
+        return default_data
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            content = f.read()
+            if not content:
+                return default_data
+            return json.loads(content)
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
-        return {}
+        return default_data
 
 def save_json_file(data, file_path):
     try:
@@ -46,6 +48,8 @@ load_metadata = lambda: load_json_file(METADATA_FILE)
 save_metadata = lambda data: save_json_file(data, METADATA_FILE)
 load_ui_state = lambda: load_json_file(UI_STATE_FILE)
 save_ui_state = lambda data: save_json_file(data, UI_STATE_FILE)
+load_presets = lambda: load_json_file(PRESETS_FILE)
+save_presets = lambda data: save_json_file(data, PRESETS_FILE)
 
 def get_lora_preview_asset(lora_name):
     """Finds a preview asset (image or video) for a given LoRA."""
@@ -59,18 +63,72 @@ def get_lora_preview_asset(lora_name):
             return os.path.basename(base_name + ext)
     return None
 
+@server.PromptServer.instance.routes.get("/localloragallery/get_presets")
+async def get_presets(request):
+    presets = load_presets()
+    return web.json_response(presets)
+
+@server.PromptServer.instance.routes.post("/localloragallery/save_preset")
+async def save_preset(request):
+    try:
+        data = await request.json()
+        preset_name = data.get("name")
+        preset_data = data.get("data")
+        if not preset_name or not preset_data:
+            return web.json_response({"status": "error", "message": "Missing preset name or data"}, status=400)
+        
+        presets = load_presets()
+        presets[preset_name] = preset_data
+        save_presets(presets)
+        return web.json_response({"status": "ok", "presets": presets})
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+@server.PromptServer.instance.routes.post("/localloragallery/delete_preset")
+async def delete_preset(request):
+    try:
+        data = await request.json()
+        preset_name = data.get("name")
+        if not preset_name:
+            return web.json_response({"status": "error", "message": "Missing preset name"}, status=400)
+        
+        presets = load_presets()
+        if preset_name in presets:
+            del presets[preset_name]
+            save_presets(presets)
+        return web.json_response({"status": "ok", "presets": presets})
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
 @server.PromptServer.instance.routes.get("/localloragallery/get_loras")
 async def get_loras_endpoint(request):
     try:
         filter_tags_str = request.query.get('filter_tag', '').strip().lower()
         filter_tags = [tag.strip() for tag in filter_tags_str.split(',') if tag.strip()]
         filter_mode = request.query.get('mode', 'OR').upper()
+        filter_folder = request.query.get('folder', '').strip()
+        selected_loras = request.query.getall('selected_loras', [])
+        
+        page = int(request.query.get('page', 1))
+        per_page = int(request.query.get('per_page', 50))
 
         lora_files = folder_paths.get_filename_list("loras")
+        loras_root = folder_paths.get_folder_paths("loras")[0]
         metadata = load_metadata()
-        lora_info_list = []
+        all_folders = set()
 
+        filtered_loras = []
         for lora in lora_files:
+            lora_full_path = folder_paths.get_full_path("loras", lora)
+            if not lora_full_path: continue
+
+            relative_path = os.path.relpath(os.path.dirname(lora_full_path), loras_root)
+            folder = "." if relative_path == "." else relative_path
+            all_folders.add(folder)
+
+            if filter_folder and filter_folder != folder:
+                continue
+
             lora_meta = metadata.get(lora, {})
             tags = [t.lower() for t in lora_meta.get('tags', [])]
 
@@ -81,7 +139,31 @@ async def get_loras_endpoint(request):
                 else:
                     if not any(ft in tags for ft in filter_tags):
                         continue
+            
+            filtered_loras.append(lora)
 
+        pinned_items_dict = {name: None for name in selected_loras}
+        remaining_items = []
+        for lora in filtered_loras:
+            if lora in pinned_items_dict:
+                pinned_items_dict[lora] = lora
+            else:
+                remaining_items.append(lora)
+
+        pinned_items = [lora for lora in selected_loras if pinned_items_dict.get(lora)]
+
+        remaining_items.sort(key=lambda x: x.lower())
+        final_lora_list = pinned_items + remaining_items
+
+        total_loras = len(final_lora_list)
+        total_pages = (total_loras + per_page - 1) // per_page
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_loras = final_lora_list[start_index:end_index]
+
+        lora_info_list = []
+        for lora in paginated_loras:
+            lora_meta = metadata.get(lora, {})
             preview_filename = get_lora_preview_asset(lora)
             preview_url = ""
             preview_type = "none"
@@ -92,21 +174,30 @@ async def get_loras_endpoint(request):
                     preview_type = "video"
                 elif ext.lower() in IMAGE_EXTENSIONS:
                     preview_type = "image"
-
+                
                 encoded_lora_name = urllib.parse.quote(lora)
                 preview_url = f"/localloragallery/preview?filename={preview_filename}&lora_name={encoded_lora_name}"
-
+            
             lora_info_list.append({
                 "name": lora,
                 "preview_url": preview_url,
                 "preview_type": preview_type,
                 "tags": lora_meta.get('tags', []),
                 "trigger_words": lora_meta.get('trigger_words', ''),
-                "download_url": lora_meta.get('download_url', '')
+                "download_url": lora_meta.get('download_url', ''),
             })
 
-        return web.json_response(lora_info_list)
+        sorted_folders = sorted(list(all_folders), key=lambda s: s.lower())
+        
+        return web.json_response({
+            "loras": lora_info_list, 
+            "folders": sorted_folders,
+            "total_pages": total_pages,
+            "current_page": page
+        })
     except Exception as e:
+        import traceback
+        print(f"Error in get_loras_endpoint: {traceback.format_exc()}")
         return web.json_response({"error": str(e)}, status=500)
 
 @server.PromptServer.instance.routes.get("/localloragallery/preview")

@@ -3,14 +3,27 @@ import { api } from "../../scripts/api.js";
 
 const LocalLoraGalleryNode = {
     name: "LocalLoraGallery",
+    isLoading: false,
+    currentPage: 1,
+    totalPages: 1,
     
-    async getLoras(filter_tag = "", mode = "OR") {
+    async getLoras(filter_tag = "", mode = "OR", folder = "", page = 1, selected_loras = []) {
+        this.isLoading = true;
         try {
-            const response = await api.fetchApi(`/localloragallery/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}`);
-            return await response.json();
+            let url = `/localloragallery/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}&folder=${encodeURIComponent(folder)}&page=${page}`;
+            selected_loras.forEach(lora => {
+                url += `&selected_loras=${encodeURIComponent(lora)}`;
+            });
+            const response = await api.fetchApi(url);
+            const data = await response.json();
+            this.totalPages = data.total_pages || 1;
+            this.currentPage = data.current_page || 1;
+            return data;
         } catch (error) {
             console.error("LocalLoraGallery: Error fetching LoRAs:", error);
-            return [];
+            return { loras: [], folders: [], total_pages: 1, current_page: 1 };
+        } finally {
+            this.isLoading = false;
         }
     },
 
@@ -62,7 +75,7 @@ const LocalLoraGalleryNode = {
             );
 
             galleryIdWidget.serializeValue = () => {
-                return node_instance.properties.lora_gallery_unique_id;
+                return this.properties.lora_gallery_unique_id;
             };
 
             galleryIdWidget.draw = function(ctx, node, widget_width, y, widget_height) {};
@@ -205,6 +218,26 @@ const LocalLoraGalleryNode = {
                     #${uniqueId} .tag-filter-input-wrapper input:not(:placeholder-shown) + .clear-tag-filter-btn {
                         display: block;
                     }
+
+                    #${uniqueId} .locallora-lora-item { cursor: grab; user-select: none; }
+                    #${uniqueId} .locallora-lora-item.dragging { opacity: 0.5; background: #555; }
+                    #${uniqueId} .locallora-lora-item.drag-over { border-top: 2px solid #4A90E2; }
+
+                    #${uniqueId} .locallora-preset-container { position: relative; display: inline-block; margin-bottom: 3px; }
+                    #${uniqueId} .preset-dropdown {
+                        display: none; position: absolute; background-color: #222;
+                        min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+                        z-index: 10; border: 1px solid #555; right: 0;
+                    }
+                    #${uniqueId} .preset-dropdown a {
+                        color: #ccc; padding: 8px 12px; text-decoration: none;
+                        display: flex; justify-content: space-between; align-items: center; font-size: 12px;
+                    }
+                    #${uniqueId} .preset-dropdown a:hover { background-color: #444; }
+                    #${uniqueId} .delete-preset-btn {
+                        color: #ff6666; cursor: pointer; font-weight: bold; padding-left: 10px;
+                    }
+                    #${uniqueId} .delete-preset-btn:hover { color: #ff0000; }
                 </style>
                 <div id="${uniqueId}" style="height: 100%;">
                     <div class="locallora-container">
@@ -213,6 +246,11 @@ const LocalLoraGalleryNode = {
                             <div class="locallora-controls-row">
                                 <button class="toggle-all-btn">Toggle All</button>
                                 <input type="text" class="search-input" placeholder="Filter by Name..." style="flex-grow: 1;">
+                                <button class="save-preset-btn" title="Save current stack as preset">Save Preset</button>
+                                <div class="locallora-preset-container">
+                                    <button class="load-preset-btn">Load Preset ▼</button>
+                                    <div class="preset-dropdown"></div>
+                                </div>
                                 <button class="clear-all-btn" title="Clear all selected LoRAs">Clear All</button>
                             </div>
                             
@@ -245,6 +283,9 @@ const LocalLoraGalleryNode = {
                                     </div>
                                     <div class="locallora-multiselect-tag-dropdown"></div>
                                 </div>
+                                <select class="folder-filter-select" style="background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px; max-width: 150px;">
+                                    <option value="">All Folders</option>
+                                </select>
                                 <button class="toggle-gallery-btn" title="Toggle Gallery" style="margin-left: auto; flex-shrink: 0;">Hide Gallery</button>
                             </div>
                         </div>
@@ -272,17 +313,38 @@ const LocalLoraGalleryNode = {
             const toggleGalleryBtn = widgetContainer.querySelector(".toggle-gallery-btn");
             const selectedCountEl = widgetContainer.querySelector(".selected-count");
             const clearTagFilterBtn = widgetContainer.querySelector(".clear-tag-filter-btn");
+            const folderFilterSelect = widgetContainer.querySelector(".folder-filter-select");
+            const savePresetBtn = widgetContainer.querySelector(".save-preset-btn");
+            const loadPresetBtn = widgetContainer.querySelector(".load-preset-btn");
+            const presetDropdown = widgetContainer.querySelector(".preset-dropdown");
 
-            const sortAndPinLoras = () => {
-                const selectedNames = new Set(this.loraData.map(item => item.lora));
-                this.availableLoras.sort((a, b) => {
-                    const aSelected = selectedNames.has(a.name);
-                    const bSelected = selectedNames.has(b.name);
-                    if (aSelected && !bSelected) return -1;
-                    if (!aSelected && bSelected) return 1;
-                    return a.name.localeCompare(b.name);
-                });
+            const saveStateAndFetch = () => {
+                const stateToSave = {
+                    filter_tag: tagFilterInput.value,
+                    filter_mode: tagFilterModeBtn.textContent,
+                    filter_folder: folderFilterSelect.value
+                };
+                LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, stateToSave);
+                fetchAndRender(false);
             };
+
+            const updatePresetButtonText = (presetName = null) => {
+                if (presetName) {
+                    loadPresetBtn.textContent = `Preset: ${presetName} ▼`;
+                    loadPresetBtn.title = `Current Preset: ${presetName}`;
+                } else {
+                    loadPresetBtn.textContent = "Load Preset ▼";
+                    loadPresetBtn.title = "Load a saved preset";
+                }
+            };
+
+            galleryEl.addEventListener('scroll', () => {
+                if (this.isLoading || this.currentPage >= this.totalPages) return;
+                const { scrollTop, scrollHeight, clientHeight } = galleryEl;
+                if (scrollHeight - scrollTop - clientHeight < 400) {
+                    fetchAndRender(true);
+                }
+            });
 
             const updateSelection = () => {
                 const serializableData = this.loraData.map(({ element, ...rest }) => rest);
@@ -301,11 +363,15 @@ const LocalLoraGalleryNode = {
                 });
             };
             
+            let draggedIndex = -1;
+
             const renderSelectedList = () => {
                 selectedListEl.innerHTML = "";
                 this.loraData.forEach((item, index) => {
                     const el = document.createElement("div");
                     el.className = "locallora-lora-item";
+                    el.draggable = true;
+                    el.dataset.index = index;
                     
                     const toggle = document.createElement("input");
                     toggle.type = "checkbox";
@@ -362,21 +428,70 @@ const LocalLoraGalleryNode = {
                                 this.setDirtyCanvas(true, true);
                             }, 0);
                         }
-                        sortAndPinLoras();
-                        renderGallery();
+                        fetchAndRender(false);
+                        updatePresetButtonText(null);
                     });
                     el.appendChild(removeBtn);
+
+                    el.addEventListener('dragstart', (e) => {
+                        draggedIndex = parseInt(e.currentTarget.dataset.index);
+                        e.currentTarget.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+
+                    el.addEventListener('dragend', (e) => {
+                        e.currentTarget.classList.remove('dragging');
+                        document.querySelectorAll(`#${uniqueId} .locallora-lora-item.drag-over`).forEach(item => item.classList.remove('drag-over'));
+                    });
+
+                    el.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        const targetItem = e.currentTarget;
+                        if(targetItem && targetItem.dataset.index !== draggedIndex) {
+                           targetItem.classList.add('drag-over');
+                        }
+                    });
+
+                    el.addEventListener('dragleave', (e) => {
+                        e.currentTarget.classList.remove('drag-over');
+                    });
+
+                    el.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        const targetItem = e.currentTarget;
+                        targetItem.classList.remove('drag-over');
+                        const targetIndex = parseInt(targetItem.dataset.index);
+                        
+                        if (draggedIndex !== targetIndex) {
+                            const [movedItem] = this.loraData.splice(draggedIndex, 1);
+                            this.loraData.splice(targetIndex, 0, movedItem);
+                            
+                            updateSelection();
+                            renderSelectedList();
+                        }
+                    });
 
                     selectedListEl.appendChild(el);
                 });
             };
 
-            const renderGallery = () => {
-                galleryEl.innerHTML = "";
+            const renderGallery = (append = false) => {
+                if (!append) {
+                    galleryEl.innerHTML = "";
+                }
+
                 const nameFilter = searchInput.value.toLowerCase();
-                this.availableLoras
-                    .filter(lora => lora.name.toLowerCase().includes(nameFilter))
-                    .forEach(lora => {
+
+                const lorasToRender = this.availableLoras.filter(lora => lora.name.toLowerCase().includes(nameFilter));
+
+                const existingCardNames = new Set(
+                    Array.from(galleryEl.querySelectorAll('.locallora-lora-card')).map(c => c.dataset.loraName)
+                );
+
+                lorasToRender.forEach(lora => {
+                    if (append && existingCardNames.has(lora.name)) {
+                        return;
+                    }
                         const card = document.createElement("div");
                         card.className = "locallora-lora-card";
                         card.dataset.loraName = lora.name;
@@ -451,10 +566,10 @@ const LocalLoraGalleryNode = {
                             } else {
                                 this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0 });
                             }
-                            sortAndPinLoras();
-                            renderGallery();
+                            fetchAndRender(false);
                             renderSelectedList();
                             updateSelection();
+                            updatePresetButtonText(null);
                         });
 
                         const editBtn = card.querySelector(".edit-tags-btn");
@@ -487,18 +602,38 @@ const LocalLoraGalleryNode = {
                 });
             };
             
-            const fetchAndRender = async () => {
+            const fetchAndRender = async (append = false) => {
+                if (this.isLoading) return;
+
+                const pageToFetch = append ? this.currentPage + 1 : 1;
+                if (append && pageToFetch > this.totalPages) return;
+
                 const tagFilter = tagFilterInput.value;
                 const filterMode = tagFilterModeBtn.textContent;
-                this.availableLoras = await LocalLoraGalleryNode.getLoras(tagFilter, filterMode); 
-                sortAndPinLoras();
-                renderGallery();
+                const folderFilter = folderFilterSelect.value;
+                const selectedLoraNames = this.loraData.map(item => item.lora);
+
+                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(this, tagFilter, filterMode, folderFilter, pageToFetch, selectedLoraNames); 
+
+                if (append) {
+                    const existingNames = new Set(this.availableLoras.map(l => l.name));
+                    const newLoras = (loras || []).filter(l => !existingNames.has(l.name));
+                    this.availableLoras = this.availableLoras.concat(newLoras);
+                } else {
+                    this.availableLoras = loras || [];
+                    if (!foldersRendered && folders && folders.length > 0) {
+                        renderFolders(folders);
+                    }
+                    galleryEl.scrollTop = 0;
+                }
+
+                renderGallery(append);
             };
 
             const handleTagSelectionChange = () => {
                 const selectedTags = Array.from(multiSelectTagDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
                 tagFilterInput.value = selectedTags.join(',');
-                fetchAndRender();
+                saveStateAndFetch();
             };
 
             const loadAllTags = async () => {
@@ -519,6 +654,93 @@ const LocalLoraGalleryNode = {
                         });
                     }
                 } catch(e) { console.error("LocalLoraGallery: Failed to load all tags:", e); }
+            };
+
+            let foldersRendered = false;
+            const renderFolders = (folders) => {
+                if (foldersRendered) return;
+                const currentVal = folderFilterSelect.value;
+                folderFilterSelect.innerHTML = `<option value="">All Folders</option>`;
+                folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder;
+                    option.textContent = folder === "." ? "Root" : folder.replaceAll('\\', '/');
+                    folderFilterSelect.appendChild(option);
+                });
+                folderFilterSelect.value = currentVal;
+                if (folders.length > 0) foldersRendered = true;
+            };
+
+            const renderPresets = (presets) => {
+                presetDropdown.innerHTML = '';
+                for (const name in presets) {
+                    const presetLink = document.createElement('a');
+                    presetLink.href = '#';
+                    presetLink.dataset.presetName = name;
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = name;
+                    presetLink.appendChild(nameSpan);
+
+                    const deleteBtn = document.createElement('span');
+                    deleteBtn.className = 'delete-preset-btn';
+                    deleteBtn.textContent = '✖';
+                    deleteBtn.title = 'Delete Preset';
+                    deleteBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (confirm(`Are you sure you want to delete preset "${name}"?`)) {
+                            const res = await api.fetchApi("/localloragallery/delete_preset", {
+                                method: "POST", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ name }),
+                            });
+                            const data = await res.json();
+                            renderPresets(data.presets);
+                        }
+                    };
+                    presetLink.appendChild(deleteBtn);
+                    
+                    presetLink.onclick = (e) => {
+                        e.preventDefault();
+                        this.loraData = JSON.parse(JSON.stringify(presets[name]));
+
+                        renderSelectedList();
+
+                        setTimeout(() => {
+                            const HEADER_HEIGHT = 90;
+                            const controlsEl = widgetContainer.querySelector(".locallora-controls");
+                            const requiredTopHeight = selectedListEl.scrollHeight + controlsEl.offsetHeight;
+
+                            if (mainContainer.classList.contains("gallery-collapsed")) {
+                                this.size[1] = requiredTopHeight + HEADER_HEIGHT;
+                            } else {
+                                const galleryHeight = galleryEl.clientHeight;
+                                const newTotalHeight = requiredTopHeight + galleryHeight + HEADER_HEIGHT;
+
+                                if (newTotalHeight > this.size[1]) {
+                                    this.size[1] = newTotalHeight;
+                                    this.expandedHeight = newTotalHeight;
+                                }
+                            }
+                            this.setDirtyCanvas(true, true);
+                        }, 0);
+
+                        updateSelection();
+                        fetchAndRender(false);
+                        presetDropdown.style.display = 'none';
+
+                        updatePresetButtonText(name);
+                    };
+                    presetDropdown.appendChild(presetLink);
+                }
+            };
+            
+            const loadPresets = async () => {
+                try {
+                    const res = await api.fetchApi("/localloragallery/get_presets");
+                    const presets = await res.json();
+                    renderPresets(presets);
+                } catch (e) { console.error("LocalLoraGallery: Failed to load presets", e); }
             };
 
             const renderMetadataEditor = () => {
@@ -594,7 +816,13 @@ const LocalLoraGalleryNode = {
             };
             
             this.initializeNode = async () => {
-                let initialState = { is_collapsed: false, lora_stack: [] };
+                let initialState = { 
+                    is_collapsed: false, 
+                    lora_stack: [],
+                    filter_tag: "",
+                    filter_mode: "OR",
+                    filter_folder: ""
+                };
                 try {
                     const res = await api.fetchApi(`/localloragallery/get_ui_state?node_id=${this.id}&gallery_id=${this.properties.lora_gallery_unique_id}`);
                     const loadedState = await res.json();
@@ -611,13 +839,32 @@ const LocalLoraGalleryNode = {
                     widget.value = selectionJson;
                 }
 
+                tagFilterInput.value = initialState.filter_tag;
+                if (initialState.filter_mode === "AND") {
+                    tagFilterModeBtn.textContent = "AND";
+                    tagFilterModeBtn.style.backgroundColor = "#D97706";
+                } else {
+                    tagFilterModeBtn.textContent = "OR";
+                    tagFilterModeBtn.style.backgroundColor = "#555";
+                }
+                
                 await loadAllTags();
-                
-                const tagFilter = tagFilterInput.value;
-                this.availableLoras = await LocalLoraGalleryNode.getLoras(tagFilter);
-                
-                sortAndPinLoras();
-                renderGallery();
+                await loadPresets();
+                await fetchAndRender(); 
+
+                let needs_refetch = false;
+                if (initialState.filter_folder && folderFilterSelect.querySelector(`option[value="${initialState.filter_folder}"]`)) {
+                    if (folderFilterSelect.value !== initialState.filter_folder) {
+                        folderFilterSelect.value = initialState.filter_folder;
+                        needs_refetch = true;
+                    }
+                }
+
+                const selectedTags = new Set(initialState.filter_tag.split(',').filter(Boolean));
+                multiSelectTagDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = selectedTags.has(cb.value);
+                });
+
                 renderSelectedList();
                 
                 if (initialState.is_collapsed) {
@@ -630,6 +877,10 @@ const LocalLoraGalleryNode = {
                         toggleGalleryBtn.textContent = "Show Gallery";
                         this.setDirtyCanvas(true, true);
                     }, 0);
+                }
+
+                if (needs_refetch) {
+                    await fetchAndRender();
                 }
             };
 
@@ -739,7 +990,7 @@ const LocalLoraGalleryNode = {
                 clearTagFilterBtn.addEventListener("click", () => {
                     tagFilterInput.value = "";
                     multiSelectTagDropdown.querySelectorAll('input:checked').forEach(cb => cb.checked = false);
-                    fetchAndRender();
+                    saveStateAndFetch();
                 });
 
                 widgetContainer.querySelector(".clear-all-btn").addEventListener("click", () => {
@@ -753,12 +1004,14 @@ const LocalLoraGalleryNode = {
                             this.setDirtyCanvas(true, true);
                         }, 0);
                     }
-                    sortAndPinLoras();
-                    renderGallery();
+                    fetchAndRender(false);
                     renderSelectedList();
                     updateSelection();
+                    updatePresetButtonText(null);
                 });
                 
+                folderFilterSelect.addEventListener("change", saveStateAndFetch);
+
                 tagFilterModeBtn.addEventListener("click", () => {
                     if (tagFilterModeBtn.textContent === "OR") {
                         tagFilterModeBtn.textContent = "AND";
@@ -767,9 +1020,26 @@ const LocalLoraGalleryNode = {
                         tagFilterModeBtn.textContent = "OR";
                         tagFilterModeBtn.style.backgroundColor = "#555";
                     }
-                    fetchAndRender();
+                    saveStateAndFetch();
                 });
-                
+              
+                savePresetBtn.addEventListener("click", async () => {
+                    const presetName = prompt("Enter a name for this preset:", "");
+                    if (presetName && this.loraData.length > 0) {
+                        const res = await api.fetchApi("/localloragallery/save_preset", {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: presetName, data: this.loraData }),
+                        });
+                        const data = await res.json();
+                        renderPresets(data.presets);
+                    }
+                });
+
+                loadPresetBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    presetDropdown.style.display = presetDropdown.style.display === 'block' ? 'none' : 'block';
+                });
+
                 toggleGalleryBtn.addEventListener("click", () => {
                     const isCollapsing = !mainContainer.classList.contains("gallery-collapsed");
                     
@@ -801,7 +1071,7 @@ const LocalLoraGalleryNode = {
                 });
 
                 searchInput.addEventListener("input", renderGallery);
-                tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') fetchAndRender(); });
+                tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') saveStateAndFetch(); });
                 
                 const arrow = multiSelectTagContainer.querySelector('.locallora-multiselect-arrow');
                 multiSelectTagDisplay.addEventListener('click', () => {
@@ -814,6 +1084,9 @@ const LocalLoraGalleryNode = {
                     if (!multiSelectTagContainer.contains(e.target)) {
                         multiSelectTagDropdown.style.display = 'none';
                         arrow.classList.remove('open');
+                    }
+                    if (!loadPresetBtn.contains(e.target)) {
+                        presetDropdown.style.display = 'none';
                     }
                 });
             };
