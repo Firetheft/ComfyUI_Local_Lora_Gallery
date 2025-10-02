@@ -113,131 +113,91 @@ const LocalLoraGalleryNode = {
             const uniqueId = `locallora-gallery-${this.id}`;
             widgetContainer.innerHTML = `
                 <style>
+                    /* --- General Styles --- */
                     #${uniqueId} .locallora-container { display: flex; flex-direction: column; height: 100%; font-family: sans-serif; }
                     #${uniqueId} .locallora-selected-list { flex-shrink: 0; padding: 5px; background-color: #22222200; max-height: 100%; }
-                    #${uniqueId} .locallora-lora-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-                    #${uniqueId} .locallora-lora-item .lora-name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-                    #${uniqueId} .locallora-lora-item input[type=number] { width: 60px; background-color: #333; border: 1px solid #555; border-radius: 4px; color: #ccc; }
-                    #${uniqueId} .locallora-lora-item .lora-label { font-size: 10px; color: var(--node-text-color); }
                     #${uniqueId} .locallora-controls { display: flex; flex-direction: column; padding: 5px; gap: 5px; flex-shrink: 0; }
                     #${uniqueId} .locallora-controls-row { display: flex; gap: 10px; align-items: center; }
-                    #${uniqueId} .locallora-controls-row input[type=text], #${uniqueId} .locallora-controls-row select {
-                        background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px;
-                    }
                     #${uniqueId} .locallora-gallery { flex-grow: 1; overflow-y: auto; background-color: #1a1a1a; padding: 5px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
-                    #${uniqueId} .locallora-gallery::-webkit-scrollbar { width: 8px; }
-                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-track { background: #2a2a2a; border-radius: 4px; }
-                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
-                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-thumb:hover { background-color: #777; }                    
+                    
+                    /* --- Lora Card --- */
                     #${uniqueId} .locallora-lora-card { cursor: pointer; border: 3px solid transparent; border-radius: 8px; background-color: var(--comfy-input-bg); transition: border-color 0.2s; display: flex; flex-direction: column; position: relative; }
                     #${uniqueId} .locallora-lora-card.selected-edit { border-color: #FFD700; box-shadow: 0 0 10px #FFD700; }
                     #${uniqueId} .locallora-lora-card.selected-flow { border-color: #00FFC9; }
-                    
-                    #${uniqueId} .locallora-media-container {
-                        width: 100%; height: 150px; background-color: #111;
-                        border-top-left-radius: 5px; border-top-right-radius: 5px;
-                        overflow: hidden; display: flex; align-items: center; justify-content: center;
-                    }
-                    #${uniqueId} .locallora-media-container img,
-                    #${uniqueId} .locallora-media-container video {
-                        width: 100%; height: 100%; object-fit: cover;
-                    }
-
+                    #${uniqueId} .locallora-media-container { width: 100%; height: 150px; background-color: #111; border-top-left-radius: 5px; border-top-right-radius: 5px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+                    #${uniqueId} .locallora-media-container img, #${uniqueId} .locallora-media-container video { width: 100%; height: 100%; object-fit: cover; }
                     #${uniqueId} .locallora-lora-card-info { padding: 4px; flex-grow: 1; display: flex; flex-direction: column; }
                     #${uniqueId} .locallora-lora-card p { font-size: 11px; margin: 0; word-break: break-all; text-align: center; color: var(--node-text-color); }
-                    
-                    #${uniqueId} .lora-card-triggers {
-                        font-size: 10px; color: #a5a5a5; padding: 2px 4px; margin-top: 2px;
-                        text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 14px;
-                    }
-
+                    #${uniqueId} .lora-card-triggers { font-size: 10px; color: #a5a5a5; padding: 2px 4px; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 14px; }
                     #${uniqueId} .lora-card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: auto; padding-top: 4px; }
                     #${uniqueId} .lora-card-tags .tag { background-color: #006699; color: #fff; padding: 1px 4px; font-size: 10px; border-radius: 3px; cursor: pointer; }
                     #${uniqueId} .lora-card-tags .tag:hover { background-color: #0088CC; }
+
+                    /* --- Card Buttons (Edit, Link, Sync) --- */
+                    #${uniqueId} .card-btn {
+                        position: absolute; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5);
+                        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                        font-size: 14px; cursor: pointer; transition: all 0.2s; opacity: 0; text-decoration: none;
+                        z-index: 10;
+                    }
+                    #${uniqueId} .locallora-lora-card:hover .card-btn { opacity: 1; }
+                    #${uniqueId} .card-btn:hover { background-color: rgba(0,0,0,0.8); }
+
+                    #${uniqueId} .lora-card-link-btn { top: 4px; right: 4px; }
+                    #${uniqueId} .edit-tags-btn { bottom: 4px; right: 4px; font-size: 12px; }
+                    #${uniqueId} .sync-civitai-btn { top: 4px; left: 4px; font-size: 12px; }
+                    #${uniqueId} .sync-civitai-btn.loading { animation: spin 1s linear infinite; pointer-events: none; background-color: #4a90e2; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+                    /* --- Scrollbar --- */
+                    #${uniqueId} .locallora-gallery::-webkit-scrollbar { width: 8px; }
+                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-track { background: #2a2a2a; border-radius: 4px; }
+                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
+                    #${uniqueId} .locallora-gallery::-webkit-scrollbar-thumb:hover { background-color: #777; }
                     
+                    /* --- Metadata Editor --- */
                     #${uniqueId} .locallora-metadata-editor { display: none; flex-direction: column; gap: 5px; }
                     #${uniqueId} .locallora-metadata-editor.visible { display: flex; }
                     #${uniqueId} .tag-editor-list .tag .remove-tag { margin-left: 4px; color: #fdd; cursor: pointer; font-weight: bold; }
                     
-                    #${uniqueId} .edit-tags-btn {
-                        position: absolute; bottom: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5);
-                        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                        font-size: 12px; transition: background-color 0.2s; opacity: 0;
-                    }
-                    #${uniqueId} .lora-card-link-btn {
-                        position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background-color: rgba(0,0,0,0.5);
-                        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                        font-size: 14px; cursor: pointer; transition: background-color 0.2s; opacity: 0; text-decoration: none;
-                    }
-                    #${uniqueId} .locallora-lora-card:hover .edit-tags-btn, #${uniqueId} .locallora-lora-card:hover .lora-card-link-btn { opacity: 1; }
-                    #${uniqueId} .edit-tags-btn:hover, #${uniqueId} .lora-card-link-btn:hover { background-color: rgba(0,0,0,0.8); }
-
-                    #${uniqueId} .locallora-container.gallery-collapsed .locallora-gallery { display: none; }
-                    #${uniqueId} .locallora-lora-item .remove-lora-btn {
-                        background: #555; color: #fff; border: none; border-radius: 10%;
-                        text-align: center; cursor: pointer; margin-left: auto; flex-shrink: 0;
-                    }
+                    /* --- Selected List Item --- */
+                    #${uniqueId} .locallora-lora-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: grab; user-select: none; }
+                    #${uniqueId} .locallora-lora-item .lora-name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+                    #${uniqueId} .locallora-lora-item input[type=number] { width: 60px; background-color: #333; border: 1px solid #555; border-radius: 4px; color: #ccc; }
+                    #${uniqueId} .locallora-lora-item .lora-label { font-size: 10px; color: var(--node-text-color); }
+                    #${uniqueId} .locallora-lora-item .remove-lora-btn { background: #555; color: #fff; border: none; border-radius: 10%; text-align: center; cursor: pointer; margin-left: auto; flex-shrink: 0; }
                     #${uniqueId} .locallora-lora-item .remove-lora-btn:hover { background: #ff4444; }
-                    #${uniqueId} .tag-filter-mode-btn {
-                        padding: 4px 8px; background-color: #555; color: #fff; border: 1px solid #666;
-                        border-radius: 4px; cursor: pointer; flex-shrink: 0;
-                    }
-                    #${uniqueId} .tag-filter-mode-btn:hover { background-color: #666; }
-                    #${uniqueId} .locallora-multiselect-tag { position: relative; flex-grow: 1; }
-                    #${uniqueId} .locallora-multiselect-tag-display { 
-                        background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 10px;
-                        height: 23px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
-                    }
-                    #${uniqueId} .locallora-multiselect-arrow {
-                        position: absolute;
-                        right: 8px;
-                        top: 50%;
-                        transform: translateY(-50%);
-                        transition: transform 0.2s ease-in-out;
-                        font-size: 10px;
-                        pointer-events: none;
-                    }
-                    #${uniqueId} .locallora-multiselect-arrow.open {
-                        transform: translateY(-50%) rotate(180deg);
-                    }
-                    #${uniqueId} .locallora-multiselect-tag-dropdown {
-                        display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: #222;
-                        border: 1px solid #555; border-top: none; max-height: 200px; overflow-y: auto; z-index: 10;
-                    }
-                    #${uniqueId} .locallora-multiselect-tag-dropdown label {
-                        display: block; padding: 0px 0px; cursor: pointer; font-size: 12px; color: #ccc;
-                    }
-                    #${uniqueId} .locallora-multiselect-tag-dropdown label:hover { background-color: #444; }
-                    #${uniqueId} .tag-filter-input-wrapper { display: flex; flex-grow: 1; position: relative; align-items: center; }
-                    #${uniqueId} .tag-filter-input-wrapper input { flex-grow: 1; }
-                    #${uniqueId} .clear-tag-filter-btn {
-                        background: none; border: none; color: #ccc; cursor: pointer; 
-                        position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-                        display: none;
-                    }
-                    #${uniqueId} .tag-filter-input-wrapper input:not(:placeholder-shown) + .clear-tag-filter-btn {
-                        display: block;
-                    }
-
-                    #${uniqueId} .locallora-lora-item { cursor: grab; user-select: none; }
                     #${uniqueId} .locallora-lora-item.dragging { opacity: 0.5; background: #555; }
                     #${uniqueId} .locallora-lora-item.drag-over { border-top: 2px solid #4A90E2; }
+                    
+                    /* --- Controls & Inputs --- */
+                    #${uniqueId} .locallora-controls-row input[type=text], #${uniqueId} .locallora-controls-row select { background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px; }
+                    #${uniqueId} .tag-filter-mode-btn { padding: 4px 8px; background-color: #555; color: #fff; border: 1px solid #666; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+                    #${uniqueId} .tag-filter-mode-btn:hover { background-color: #666; }
+                    #${uniqueId} .tag-filter-input-wrapper { display: flex; flex-grow: 1; position: relative; align-items: center; }
+                    #${uniqueId} .tag-filter-input-wrapper input { flex-grow: 1; }
+                    #${uniqueId} .clear-tag-filter-btn { background: none; border: none; color: #ccc; cursor: pointer; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: none; }
+                    #${uniqueId} .tag-filter-input-wrapper input:not(:placeholder-shown) + .clear-tag-filter-btn { display: block; }
+                    
+                    /* --- Multi-Select Dropdown --- */
+                    #${uniqueId} .locallora-multiselect-tag { position: relative; flex-grow: 1; }
+                    #${uniqueId} .locallora-multiselect-tag-display { background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 10px; height: 23px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+                    #${uniqueId} .locallora-multiselect-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); transition: transform 0.2s ease-in-out; font-size: 10px; pointer-events: none; }
+                    #${uniqueId} .locallora-multiselect-arrow.open { transform: translateY(-50%) rotate(180deg); }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: #222; border: 1px solid #555; border-top: none; max-height: 200px; overflow-y: auto; z-index: 10; }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown label { display: block; padding: 0px 0px; cursor: pointer; font-size: 12px; color: #ccc; }
+                    #${uniqueId} .locallora-multiselect-tag-dropdown label:hover { background-color: #444; }
 
+                    /* --- Presets --- */
                     #${uniqueId} .locallora-preset-container { position: relative; display: inline-block; margin-bottom: 3px; }
-                    #${uniqueId} .preset-dropdown {
-                        display: none; position: absolute; background-color: #222;
-                        min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-                        z-index: 10; border: 1px solid #555; right: 0;
-                    }
-                    #${uniqueId} .preset-dropdown a {
-                        color: #ccc; padding: 8px 12px; text-decoration: none;
-                        display: flex; justify-content: space-between; align-items: center; font-size: 12px;
-                    }
+                    #${uniqueId} .preset-dropdown { display: none; position: absolute; background-color: #222; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border: 1px solid #555; right: 0; }
+                    #${uniqueId} .preset-dropdown a { color: #ccc; padding: 8px 12px; text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
                     #${uniqueId} .preset-dropdown a:hover { background-color: #444; }
-                    #${uniqueId} .delete-preset-btn {
-                        color: #ff6666; cursor: pointer; font-weight: bold; padding-left: 10px;
-                    }
+                    #${uniqueId} .delete-preset-btn { color: #ff6666; cursor: pointer; font-weight: bold; padding-left: 10px; }
                     #${uniqueId} .delete-preset-btn:hover { color: #ff0000; }
+                    
+                    /* Misc */
+                    #${uniqueId} .locallora-container.gallery-collapsed .locallora-gallery { display: none; }
                 </style>
                 <div id="${uniqueId}" style="height: 100%;">
                     <div class="locallora-container">
@@ -283,7 +243,7 @@ const LocalLoraGalleryNode = {
                                     </div>
                                     <div class="locallora-multiselect-tag-dropdown"></div>
                                 </div>
-                                <select class="folder-filter-select" style="background: #222; color: #ccc; border: 1px solid #555; padding: 4px; border-radius: 4px; max-width: 150px;">
+                                <select class="folder-filter-select" style="max-width: 150px;">
                                     <option value="">All Folders</option>
                                 </select>
                                 <button class="toggle-gallery-btn" title="Toggle Gallery" style="margin-left: auto; flex-shrink: 0;">Hide Gallery</button>
@@ -329,13 +289,8 @@ const LocalLoraGalleryNode = {
             };
 
             const updatePresetButtonText = (presetName = null) => {
-                if (presetName) {
-                    loadPresetBtn.textContent = `Preset: ${presetName} ▼`;
-                    loadPresetBtn.title = `Current Preset: ${presetName}`;
-                } else {
-                    loadPresetBtn.textContent = "Load Preset ▼";
-                    loadPresetBtn.title = "Load a saved preset";
-                }
+                loadPresetBtn.textContent = presetName ? `Preset: ${presetName} ▼` : "Load Preset ▼";
+                loadPresetBtn.title = presetName ? `Current Preset: ${presetName}` : "Load a saved preset";
             };
 
             galleryEl.addEventListener('scroll', () => {
@@ -351,11 +306,8 @@ const LocalLoraGalleryNode = {
                 const selectionJson = JSON.stringify(serializableData);
 
                 this.setProperty("selection_data", selectionJson);
-
                 const widget = this.widgets.find(w => w.name === "selection_data");
-                if (widget) {
-                    widget.value = selectionJson;
-                }
+                if (widget) widget.value = selectionJson;
 
                 LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
                     is_collapsed: mainContainer.classList.contains("gallery-collapsed"),
@@ -415,7 +367,6 @@ const LocalLoraGalleryNode = {
                     removeBtn.className = "remove-lora-btn";
                     removeBtn.textContent = "✖";
                     removeBtn.title = "Remove LoRA";
-                    
                     removeBtn.addEventListener("click", () => {
                         this.loraData.splice(index, 1);
                         renderSelectedList();
@@ -438,34 +389,14 @@ const LocalLoraGalleryNode = {
                         e.currentTarget.classList.add('dragging');
                         e.dataTransfer.effectAllowed = 'move';
                     });
-
-                    el.addEventListener('dragend', (e) => {
-                        e.currentTarget.classList.remove('dragging');
-                        document.querySelectorAll(`#${uniqueId} .locallora-lora-item.drag-over`).forEach(item => item.classList.remove('drag-over'));
-                    });
-
-                    el.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        const targetItem = e.currentTarget;
-                        if(targetItem && targetItem.dataset.index !== draggedIndex) {
-                           targetItem.classList.add('drag-over');
-                        }
-                    });
-
-                    el.addEventListener('dragleave', (e) => {
-                        e.currentTarget.classList.remove('drag-over');
-                    });
-
+                    el.addEventListener('dragend', (e) => e.currentTarget.classList.remove('dragging'));
+                    el.addEventListener('dragover', (e) => e.preventDefault());
                     el.addEventListener('drop', (e) => {
                         e.preventDefault();
-                        const targetItem = e.currentTarget;
-                        targetItem.classList.remove('drag-over');
-                        const targetIndex = parseInt(targetItem.dataset.index);
-                        
+                        const targetIndex = parseInt(e.currentTarget.dataset.index);
                         if (draggedIndex !== targetIndex) {
                             const [movedItem] = this.loraData.splice(draggedIndex, 1);
                             this.loraData.splice(targetIndex, 0, movedItem);
-                            
                             updateSelection();
                             renderSelectedList();
                         }
@@ -474,159 +405,213 @@ const LocalLoraGalleryNode = {
                     selectedListEl.appendChild(el);
                 });
             };
+            
+            const syncWithCivitai = async (loraName, card) => {
+                const syncBtn = card.querySelector('.sync-civitai-btn');
+                syncBtn.textContent = '🔄';
+                syncBtn.classList.add('loading');
+            
+                try {
+                    const response = await api.fetchApi("/localloragallery/sync_civitai", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lora_name: loraName }),
+                    });
+            
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                    }
+            
+                    const result = await response.json();
+            
+                    if (result.status === 'ok' && result.metadata) {
+                        const { preview_url, preview_type, trigger_words, download_url, tags } = result.metadata;
+                        
+                        const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
+                        if (loraInDataSource) {
+                            loraInDataSource.preview_url = preview_url || '';
+                            loraInDataSource.preview_type = preview_type || 'none';
+                            loraInDataSource.trigger_words = trigger_words || '';
+                            loraInDataSource.download_url = download_url || '';
+                            loraInDataSource.tags = tags || [];
+                        }
+                        
+                        const mediaContainer = card.querySelector('.locallora-media-container');
+                        if (preview_type === 'video' && preview_url) {
+                            mediaContainer.innerHTML = `<video muted loop playsinline src="${preview_url}"></video>`;
+                            const video = mediaContainer.querySelector('video');
+                            card.addEventListener('mouseenter', () => video.play().catch(e => {}));
+                            card.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
+                        } else if (preview_type === 'image' && preview_url) {
+                            mediaContainer.innerHTML = `<img src="${preview_url}">`;
+                        } else {
+                            const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                            mediaContainer.innerHTML = `<img src="${empty_lora_image}">`;
+                        }
+
+                        const triggerEl = card.querySelector('.lora-card-triggers');
+                        if(triggerEl) {
+                           triggerEl.textContent = trigger_words || 'No triggers';
+                           triggerEl.title = trigger_words || '';
+                        }
+                        card.dataset.triggerWords = trigger_words || '';
+                        card.dataset.downloadUrl = download_url || '';
+                        card.dataset.tags = (tags || []).join(',');
+                        
+                        const oldLinkBtn = card.querySelector('.lora-card-link-btn');
+                        if(oldLinkBtn) oldLinkBtn.remove();
+                        if(download_url){
+                            const linkBtn = document.createElement('a');
+                            linkBtn.href = download_url;
+                            linkBtn.target = '_blank';
+                            linkBtn.className = 'card-btn lora-card-link-btn';
+                            linkBtn.title = 'Open download page';
+                            linkBtn.innerHTML = '🔗';
+                            linkBtn.addEventListener('click', e => e.stopPropagation());
+                            card.prepend(linkBtn);
+                        }
+                        
+                        renderCardTags(card);
+                        await loadAllTags();
+                    } else {
+                       throw new Error(result.message || 'Sync failed');
+                    }
+            
+                } catch (error) {
+                    console.error("LocalLoraGallery: Failed to sync with Civitai:", error);
+                    syncBtn.textContent = '❌';
+                    setTimeout(() => syncBtn.textContent = '☁️', 2000);
+                } finally {
+                    syncBtn.classList.remove('loading');
+                    if(syncBtn.textContent !== '❌') syncBtn.textContent = '☁️';
+                }
+            };
 
             const renderGallery = (append = false) => {
-                if (!append) {
-                    galleryEl.innerHTML = "";
-                }
-
+                if (!append) galleryEl.innerHTML = "";
                 const nameFilter = searchInput.value.toLowerCase();
-
                 const lorasToRender = this.availableLoras.filter(lora => lora.name.toLowerCase().includes(nameFilter));
-
-                const existingCardNames = new Set(
-                    Array.from(galleryEl.querySelectorAll('.locallora-lora-card')).map(c => c.dataset.loraName)
-                );
+                const existingCardNames = new Set(Array.from(galleryEl.querySelectorAll('.locallora-lora-card')).map(c => c.dataset.loraName));
 
                 lorasToRender.forEach(lora => {
-                    if (append && existingCardNames.has(lora.name)) {
-                        return;
+                    if (append && existingCardNames.has(lora.name)) return;
+                    
+                    const card = document.createElement("div");
+                    card.className = "locallora-lora-card";
+                    card.dataset.loraName = lora.name;
+                    card.dataset.tags = lora.tags.join(',');
+                    card.dataset.triggerWords = lora.trigger_words;
+                    card.dataset.downloadUrl = lora.download_url;
+                    card.title = lora.name;
+
+                    let mediaHTML = '';
+                    const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    const previewUrl = lora.preview_url;
+
+                    if (lora.preview_type === 'video' && previewUrl) {
+                        mediaHTML = `<video muted loop playsinline src="${previewUrl}"></video>`;
+                    } else {
+                        mediaHTML = `<img src="${previewUrl || empty_lora_image}" loading="lazy">`;
                     }
-                        const card = document.createElement("div");
-                        card.className = "locallora-lora-card";
-                        card.dataset.loraName = lora.name;
-                        card.dataset.tags = lora.tags.join(',');
-                        card.dataset.triggerWords = lora.trigger_words;
-                        card.dataset.downloadUrl = lora.download_url;
-                        card.title = lora.name;
+                    
+                    const linkBtnHTML = lora.download_url ? `<a href="${lora.download_url}" target="_blank" class="card-btn lora-card-link-btn" title="Open download page">🔗</a>` : '';
 
-                        let mediaHTML = '';
-                        const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    card.innerHTML = `
+                        <div class="card-btn sync-civitai-btn" title="Sync with Civitai">☁️</div>
+                        ${linkBtnHTML}
+                        <div class="locallora-media-container">${mediaHTML}</div>
+                        <div class="locallora-lora-card-info">
+                            <p>${lora.name}</p>
+                            <div class="lora-card-triggers" title="${lora.trigger_words}">${lora.trigger_words || 'No triggers'}</div>
+                            <div class="lora-card-tags"></div>
+                        </div>
+                        <div class="card-btn edit-tags-btn">✏️</div>
+                    `;
 
-                        if (lora.preview_type === 'video' && lora.preview_url) {
-                            mediaHTML = `<video muted loop playsinline src="${lora.preview_url}"></video>`;
+                    if (lora.preview_type !== 'video') {
+                        card.querySelector("img").onerror = (e) => { e.target.src = empty_lora_image; };
+                    }
+                    galleryEl.appendChild(card);
+                    
+                    card.querySelector(".lora-card-link-btn")?.addEventListener("click", e => e.stopPropagation());
+                    card.querySelector(".sync-civitai-btn").addEventListener("click", e => {
+                        e.stopPropagation();
+                        syncWithCivitai(lora.name, card);
+                    });
+
+                    if (this.loraData.some(item => item.lora === lora.name)) card.classList.add("selected-flow");
+                    if (this.selectedCardsForEditing.has(card)) card.classList.add("selected-edit");
+
+                    renderCardTags(card);
+                    
+                    if (lora.preview_type === 'video') {
+                        const video = card.querySelector('video');
+                        if (video) {
+                            card.addEventListener('mouseenter', () => video.play().catch(e => {}));
+                            card.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
+                        }
+                    }
+
+                    card.addEventListener("click", () => {
+                        const loraName = card.dataset.loraName;
+                        const existingIndex = this.loraData.findIndex(item => item.lora === loraName);
+                        if (existingIndex > -1) {
+                            this.loraData.splice(existingIndex, 1);
                         } else {
-                            mediaHTML = `<img src="${lora.preview_url || empty_lora_image}">`;
+                            this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0 });
                         }
+                        renderSelectedList();
+                        updateSelection();
+                        updatePresetButtonText(null);
                         
-                        const linkBtnHTML = lora.download_url 
-                            ? `<a href="${lora.download_url}" target="_blank" class="lora-card-link-btn" title="Open download page">🔗</a>` 
-                            : '';
+                        card.classList.toggle("selected-flow");
+                    });
 
-                        card.innerHTML = `
-                            ${linkBtnHTML}
-                            <div class="locallora-media-container">
-                                ${mediaHTML}
-                            </div>
-                            <div class="locallora-lora-card-info">
-                                <p>${lora.name}</p>
-                                <div class="lora-card-triggers" title="${lora.trigger_words}">${lora.trigger_words || 'No triggers'}</div>
-                                <div class="lora-card-tags"></div>
-                            </div>
-                            <div class="edit-tags-btn">✏️</div>
-                        `;
-
-                        if (lora.preview_type !== 'video') {
-                            card.querySelector("img").onerror = (e) => { e.target.src = empty_lora_image; };
-                        }
-                        galleryEl.appendChild(card);
-                        
-                        const linkBtn = card.querySelector(".lora-card-link-btn");
-                        if (linkBtn) {
-                            linkBtn.addEventListener("click", (e) => e.stopPropagation());
-                        }
-
-                        if (this.loraData.some(item => item.lora === lora.name)) {
-                            card.classList.add("selected-flow");
-                        }
-                        if (this.selectedCardsForEditing.has(card)) {
-                            card.classList.add("selected-edit");
-                        }
-
-                        renderCardTags(card);
-                        
-                        if (lora.preview_type === 'video') {
-                            const video = card.querySelector('video');
-                            if (video) {
-                                card.addEventListener('mouseenter', () => {
-                                    video.play().catch(e => { /* Ignore errors from autoplay restrictions */ });
-                                });
-                                card.addEventListener('mouseleave', () => {
-                                    video.pause();
-                                    video.currentTime = 0;
-                                });
-                            }
-                        }
-
-                        card.addEventListener("click", () => {
-                            const loraName = card.dataset.loraName;
-                            const existingIndex = this.loraData.findIndex(item => item.lora === loraName);
-                            if (existingIndex > -1) {
-                                this.loraData.splice(existingIndex, 1);
+                    const editBtn = card.querySelector(".edit-tags-btn");
+                    editBtn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                    
+                        if (e.ctrlKey) {
+                            if (this.selectedCardsForEditing.has(card)) {
+                                this.selectedCardsForEditing.delete(card);
+                                card.classList.remove("selected-edit");
                             } else {
-                                this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0 });
+                                this.selectedCardsForEditing.add(card);
+                                card.classList.add("selected-edit");
                             }
-                            fetchAndRender(false);
-                            renderSelectedList();
-                            updateSelection();
-                            updatePresetButtonText(null);
-                        });
-
-                        const editBtn = card.querySelector(".edit-tags-btn");
-                        editBtn.addEventListener("click", (e) => {
-                            e.stopPropagation();
-                        
-                            if (e.ctrlKey) {
-                                if (this.selectedCardsForEditing.has(card)) {
-                                    this.selectedCardsForEditing.delete(card);
-                                    card.classList.remove("selected-edit");
-                                } else {
-                                    this.selectedCardsForEditing.add(card);
-                                    card.classList.add("selected-edit");
-                                }
+                        } else {
+                            if (this.selectedCardsForEditing.has(card) && this.selectedCardsForEditing.size === 1) {
+                                this.selectedCardsForEditing.clear();
+                                card.classList.remove("selected-edit");
                             } else {
-                                if (this.selectedCardsForEditing.has(card) && this.selectedCardsForEditing.size === 1) {
-                                    this.selectedCardsForEditing.clear();
-                                    card.classList.remove("selected-edit");
-                                } else {
-                                    document.querySelectorAll(`#${uniqueId} .locallora-lora-card.selected-edit`).forEach(c => c.classList.remove("selected-edit"));
-                                    this.selectedCardsForEditing.clear();
-                                    
-                                    this.selectedCardsForEditing.add(card);
-                                    card.classList.add("selected-edit");
-                                }
+                                document.querySelectorAll(`#${uniqueId} .locallora-lora-card.selected-edit`).forEach(c => c.classList.remove("selected-edit"));
+                                this.selectedCardsForEditing.clear();
+                                
+                                this.selectedCardsForEditing.add(card);
+                                card.classList.add("selected-edit");
                             }
-                        
-                            renderMetadataEditor();
-                        });
+                        }
+                    
+                        renderMetadataEditor();
+                    });
                 });
             };
             
             const fetchAndRender = async (append = false) => {
                 if (this.isLoading) return;
-
                 const pageToFetch = append ? this.currentPage + 1 : 1;
                 if (append && pageToFetch > this.totalPages) return;
-
-                const tagFilter = tagFilterInput.value;
-                const filterMode = tagFilterModeBtn.textContent;
-                const folderFilter = folderFilterSelect.value;
-                const selectedLoraNames = this.loraData.map(item => item.lora);
-
-                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(this, tagFilter, filterMode, folderFilter, pageToFetch, selectedLoraNames); 
+                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(this, tagFilterInput.value, tagFilterModeBtn.textContent, folderFilterSelect.value, pageToFetch, this.loraData.map(item => item.lora)); 
 
                 if (append) {
                     const existingNames = new Set(this.availableLoras.map(l => l.name));
-                    const newLoras = (loras || []).filter(l => !existingNames.has(l.name));
-                    this.availableLoras = this.availableLoras.concat(newLoras);
+                    this.availableLoras.push(...(loras || []).filter(l => !existingNames.has(l.name)));
                 } else {
                     this.availableLoras = loras || [];
-                    if (!foldersRendered && folders && folders.length > 0) {
-                        renderFolders(folders);
-                    }
+                    if (!foldersRendered && folders && folders.length > 0) renderFolders(folders);
                     galleryEl.scrollTop = 0;
                 }
-
                 renderGallery(append);
             };
 
@@ -648,8 +633,7 @@ const LocalLoraGalleryNode = {
                             checkbox.type = 'checkbox';
                             checkbox.value = tag;
                             checkbox.addEventListener('change', handleTagSelectionChange);
-                            label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(` ${tag}`));
+                            label.append(checkbox, ` ${tag}`);
                             multiSelectTagDropdown.appendChild(label);
                         });
                     }
@@ -835,9 +819,7 @@ const LocalLoraGalleryNode = {
                 const selectionJson = JSON.stringify(this.loraData);
                 this.setProperty("selection_data", selectionJson);
                 const widget = this.widgets.find(w => w.name === "selection_data");
-                if (widget) {
-                    widget.value = selectionJson;
-                }
+                if (widget) widget.value = selectionJson;
 
                 tagFilterInput.value = initialState.filter_tag;
                 if (initialState.filter_mode === "AND") {
@@ -1070,7 +1052,7 @@ const LocalLoraGalleryNode = {
                     updateSelection();
                 });
 
-                searchInput.addEventListener("input", renderGallery);
+                searchInput.addEventListener("input", () => renderGallery(false));
                 tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') saveStateAndFetch(); });
                 
                 const arrow = multiSelectTagContainer.querySelector('.locallora-multiselect-arrow');
@@ -1085,8 +1067,8 @@ const LocalLoraGalleryNode = {
                         multiSelectTagDropdown.style.display = 'none';
                         arrow.classList.remove('open');
                     }
-                    if (!loadPresetBtn.contains(e.target)) {
-                        presetDropdown.style.display = 'none';
+                    if (presetDropdown && !loadPresetBtn.contains(e.target) && !presetDropdown.contains(e.target)) {
+                       presetDropdown.style.display = 'none';
                     }
                 });
             };

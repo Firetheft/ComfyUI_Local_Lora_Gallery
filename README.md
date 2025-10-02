@@ -13,6 +13,11 @@
 ---
 
 ## 🇬🇧 English
+### Update Log (2025-10-02)
+* **Civitai Metadata Sync & Preview Downloader**:
+    * Added a "Sync with Civitai" (☁️) button to each LoRA card. This feature calculates the model's hash to fetch metadata like trigger words and homepage URLs from Civitai.
+    * When syncing, the plugin automatically downloads a small, web-optimized preview (image or video, 450px wide) and saves it locally alongside your LoRA file. This ensures fast, offline access to previews after the initial sync.
+
 ### Changelog (2025-09-12)
 * **Preset Management**: You can now save your favorite LoRA stacks as presets and load them with a single click.
 * **Folder Filtering**: A new dropdown menu allows you to filter LoRAs by their subfolder, making it easier to manage large collections.
@@ -92,6 +97,11 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+### 更新日志 (2025-10-02)
+* **Civitai 元数据同步与预览图下载**:
+    * 在每个 LoRA 卡片上增加了一个“与Civitai同步”(☁️) 按钮。此功能会计算模型哈希值，以从 Civitai 获取触发词和主页URL等元数据。
+    * 同步时，插件会自动下载一个经网络优化的预览图（450px宽的图片或视频），并将其保存在您的 LoRA 文件旁边。这确保了在初次同步后，您可以在本地快速、离线地访问预览图。
+
 ### 更新日志 (2025-09-12)
 * **预设管理**: 现在您可以将常用的 LoRA 堆栈保存为预设，并一键加载。
 * **文件夹筛选**: 新增了文件夹筛选下拉菜单，可以按子文件夹显示 LoRA，便于管理庞大的模型库。

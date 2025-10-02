@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI_Local_Lora_Gallery"
 description = "A custom node for ComfyUI that provides a visual gallery for managing and applying multiple LoRA models."
-version = "1.0.6"
+version = "1.1.0"
 license = {file = "LICENSE"} 
 # classifiers = [
 #     # For OS-independent nodes (works on all operating systems)
