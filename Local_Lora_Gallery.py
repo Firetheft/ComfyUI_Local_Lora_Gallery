@@ -11,15 +11,25 @@ import asyncio
 from urllib.parse import urlparse
 
 NunchakuFluxLoraLoader = None
-is_nunchaku_available = False
+NunchakuQwenLoraLoader = None
+is_nunchaku_flux_available = False
+is_nunchaku_qwen_available = False
+
 try:
     from nodes import NODE_CLASS_MAPPINGS
+    
     if "NunchakuFluxLoraLoader" in NODE_CLASS_MAPPINGS:
         NunchakuFluxLoraLoader = NODE_CLASS_MAPPINGS["NunchakuFluxLoraLoader"]
-        is_nunchaku_available = True
-        print("✅ Local Lora Gallery: Nunchaku integration enabled.")
+        is_nunchaku_flux_available = True
+        print("✅ Local Lora Gallery: Nunchaku Flux integration enabled.")
+        
+    if "NunchakuQwenImageLoraLoader" in NODE_CLASS_MAPPINGS:
+        NunchakuQwenLoraLoader = NODE_CLASS_MAPPINGS["NunchakuQwenImageLoraLoader"]
+        is_nunchaku_qwen_available = True
+        print("✅ Local Lora Gallery: Nunchaku Qwen Image integration enabled.")
+        
 except Exception as e:
-    print(f"INFO: Local Lora Gallery - Nunchaku nodes not found. Running in standard mode. Error: {e}")
+    print(f"INFO: Local Lora Gallery - Nunchaku nodes not found or failed to load. Running in standard mode. Error: {e}")
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
@@ -263,7 +273,7 @@ async def get_loras_endpoint(request):
         per_page = int(request.query.get('per_page', 50))
 
         lora_files = folder_paths.get_filename_list("loras")
-        loras_root = folder_paths.get_folder_paths("loras")[0]
+        lora_roots = folder_paths.get_folder_paths("loras")
         metadata = load_metadata()
         all_folders = set()
 
@@ -272,7 +282,17 @@ async def get_loras_endpoint(request):
             lora_full_path = folder_paths.get_full_path("loras", lora)
             if not lora_full_path: continue
 
-            relative_path = os.path.relpath(os.path.dirname(lora_full_path), loras_root)
+            this_lora_root = None
+            for root in lora_roots:
+                if os.path.normpath(lora_full_path).startswith(os.path.normpath(root)):
+                    this_lora_root = root
+                    break
+            
+            if not this_lora_root:
+                print(f"Local Lora Gallery: Could not find a root folder for {lora_full_path}. Skipping.")
+                continue
+
+            relative_path = os.path.relpath(os.path.dirname(lora_full_path), this_lora_root)
             folder = "." if relative_path == "." else relative_path
             all_folders.add(folder)
 
@@ -445,11 +465,22 @@ class BaseLoraGallery:
     def IS_CHANGED(cls, selection_data, **kwargs):
         return selection_data
 
-    def _is_nunchaku_model(self, model):
-        """Checks if the model is a Nunchaku-accelerated model."""
-        if not is_nunchaku_available:
-            return False
-        return hasattr(model.model, 'diffusion_model') and model.model.diffusion_model.__class__.__name__ == 'ComfyFluxWrapper'
+    def _get_nunchaku_model_type(self, model):
+        """Checks if the model is a Nunchaku-accelerated model and returns its type."""
+        if not (is_nunchaku_flux_available or is_nunchaku_qwen_available):
+            return 'none'
+        
+        if not hasattr(model.model, 'diffusion_model'):
+            return 'none'
+            
+        wrapper_class_name = model.model.diffusion_model.__class__.__name__
+        
+        if wrapper_class_name == 'ComfyFluxWrapper' and is_nunchaku_flux_available:
+            return 'flux'
+        elif wrapper_class_name == 'ComfyQwenImageWrapper' and is_nunchaku_qwen_available:
+            return 'qwen'
+        
+        return 'none'
 
 class LocalLoraGallery(BaseLoraGallery):
     @classmethod
@@ -480,10 +511,18 @@ class LocalLoraGallery(BaseLoraGallery):
         current_model, current_clip = model, clip
         applied_count = 0
 
-        use_nunchaku_loader = self._is_nunchaku_model(model)
-
-        loader_instance = NunchakuFluxLoraLoader() if use_nunchaku_loader else LoraLoader()
-        print(f"LocalLoraGallery: Using {'NunchakuFluxLoraLoader' if use_nunchaku_loader else 'standard LoraLoader'}.")
+        nunchaku_model_type = self._get_nunchaku_model_type(model)
+        loader_instance = None
+        
+        if nunchaku_model_type == 'flux':
+            loader_instance = NunchakuFluxLoraLoader()
+            print("LocalLoraGallery: Using NunchakuFluxLoraLoader.")
+        elif nunchaku_model_type == 'qwen':
+            loader_instance = NunchakuQwenLoraLoader()
+            print("LocalLoraGallery: Using NunchakuQwenImageLoraLoader.")
+        else:
+            loader_instance = LoraLoader()
+            print("LocalLoraGallery: Using standard LoraLoader.")
 
         for config in lora_configs:
             if not config.get('on', True) or not config.get('lora'):
@@ -503,7 +542,7 @@ class LocalLoraGallery(BaseLoraGallery):
                 if strength_model == 0 and strength_clip == 0:
                     continue
 
-                if use_nunchaku_loader:
+                if nunchaku_model_type in ['flux', 'qwen']:
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     current_model, current_clip = loader_instance.load_lora(current_model, current_clip, lora_name, strength_model, strength_clip)
@@ -546,10 +585,18 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
         current_model = model
         applied_count = 0
 
-        use_nunchaku_loader = self._is_nunchaku_model(model)
+        nunchaku_model_type = self._get_nunchaku_model_type(model)
+        loader_instance = None
 
-        loader_instance = NunchakuFluxLoraLoader() if use_nunchaku_loader else LoraLoaderModelOnly()
-        print(f"LocalLoraGalleryModelOnly: Using {'NunchakuFluxLoraLoader' if use_nunchaku_loader else 'standard LoraLoaderModelOnly'}.")
+        if nunchaku_model_type == 'flux':
+            loader_instance = NunchakuFluxLoraLoader()
+            print("LocalLoraGalleryModelOnly: Using NunchakuFluxLoraLoader.")
+        elif nunchaku_model_type == 'qwen':
+            loader_instance = NunchakuQwenLoraLoader()
+            print("LocalLoraGalleryModelOnly: Using NunchakuQwenImageLoraLoader.")
+        else:
+            loader_instance = LoraLoaderModelOnly()
+            print("LocalLoraGalleryModelOnly: Using standard LoraLoaderModelOnly.")
 
         for config in lora_configs:
             if not config.get('on', True) or not config.get('lora'):
@@ -567,7 +614,7 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
                 if strength_model == 0:
                     continue
 
-                if use_nunchaku_loader:
+                if nunchaku_model_type in ['flux', 'qwen']:
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     (current_model,) = loader_instance.load_lora_model_only(current_model, lora_name, strength_model)

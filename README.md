@@ -13,6 +13,19 @@
 ---
 
 ## 🇬🇧 English
+### Changelog (2025-10-21)
+* **[Recent Updates]**:
+    * Nunchaku Qwen LoRA Support (Early Access)Important Note: This feature currently depends on a specific early access version of the ComfyUI-nunchaku plugin.To enable this support, you must perform the following steps:
+    * Update the Nunchaku Core Library (v1.0.1):
+    Visit the Releases page of the Nunchaku plugin.
+    Download the latest .whl file (e.g., nunchaku-1.0.1+torch2.7-cp311-cp311-win_amd64.whl) and install it.
+    * Update the Nunchaku ComfyUI Plugin:
+    Since support for Qwen LoRA has been added in early access, you need to reinstall or update the ComfyUI-nunchaku plugin itself:
+    In the custom_nodes folder of ComfyUI, delete the old ComfyUI-nunchaku folder.
+    Re-clone the plugin using the following URL:
+    git clone https://github.com/Firetheft/ComfyUI-nunchaku.git
+    After completing the above steps, the Local Lora Gallery node will automatically detect the Nunchaku Qwen Image model and call NunchakuQwenImageLoraLoader to load the LoRA.Lastly, this step is not mandatory if you do not need to use Nunchaku Qwen LoRA.
+
 ### Update Log (2025-10-02)
 * **Civitai Metadata Sync & Preview Downloader**:
     * Added a "Sync with Civitai" (☁️) button to each LoRA card. This feature calculates the model's hash to fetch metadata like trigger words and homepage URLs from Civitai.
@@ -97,6 +110,21 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
+### 更新日志 (2025-10-21)
+* **[近期更新]**:
+    * 双截棍（Nunchaku）Qwen LoRA 支持（先行体验版）
+    重要提示：此功能目前依赖 ComfyUI-nunchaku 插件的特定先行体验版本。若需启用该支持，需执行以下步骤：
+    * 更新双截棍（Nunchaku）核心库（v1.0.1）：
+    访问双截棍（Nunchaku）插件的 Releases 页面。
+    下载最新的 .whl 文件（例如：nunchaku-1.0.1+torch2.7-cp311-cp311-win_amd64.whl）并进行安装。
+    * 更新双截棍（Nunchaku）ComfyUI 插件：
+    由于 Qwen LoRA 支持为新增的先行体验功能，您需重新安装或更新 ComfyUI-nunchaku 插件本体：
+    在 ComfyUI 的 custom_nodes 文件夹中，删除旧的 ComfyUI-nunchaku 文件夹。
+    使用以下链接重新克隆该插件：
+    git clone https://github.com/Firetheft/ComfyUI-nunchaku.git
+    完成上述步骤后，Local Lora Gallery（本地 LoRA 图库）节点将自动检测到双截棍（Nunchaku）Qwen 图像模型，并调用 NunchakuQwenImageLoraLoader 加载 LoRA。
+    最后说明：若您无需使用双截棍（Nunchaku）Qwen LoRA，则上述步骤非必需操作。
+
 ### 更新日志 (2025-10-02)
 * **Civitai 元数据同步与预览图下载**:
     * 在每个 LoRA 卡片上增加了一个“与Civitai同步”(☁️) 按钮。此功能会计算模型哈希值，以从 Civitai 获取触发词和主页URL等元数据。
