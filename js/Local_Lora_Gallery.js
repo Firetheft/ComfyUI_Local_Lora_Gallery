@@ -67,7 +67,7 @@ const LocalLoraGalleryNode = {
             }
 
             const galleryIdWidget = this.addWidget(
-                "text",
+                "hidden_text",
                 "lora_gallery_unique_id_widget",
                 this.properties.lora_gallery_unique_id,
                 () => {},
@@ -80,10 +80,10 @@ const LocalLoraGalleryNode = {
 
             galleryIdWidget.draw = function(ctx, node, widget_width, y, widget_height) {};
             galleryIdWidget.computeSize = function(width) {
-                return [0, -4];
+                return [0, 0];
             }
             
-            const HEADER_HEIGHT = 90;
+            const HEADER_HEIGHT = 110;
             const MIN_NODE_WIDTH = 600;
 
             this.size = [700, 600];
@@ -94,7 +94,7 @@ const LocalLoraGalleryNode = {
 
             const node_instance = this;
             const selectionWidget = this.addWidget(
-                "text",
+                "hidden_text",
                 "selection_data",
                 this.properties.selection_data || "[]",
                 () => {},
@@ -104,21 +104,26 @@ const LocalLoraGalleryNode = {
                 return node_instance.properties["selection_data"] || "[]";
             };
             selectionWidget.draw = function(ctx, node, widget_width, y, widget_height) {};
-            selectionWidget.computeSize = function(width) { return [0, -4]; };
+            selectionWidget.computeSize = function(width) { return [0, 0]; };
 
             const widgetContainer = document.createElement("div");
             widgetContainer.className = "locallora-container-wrapper";
+
+            widgetContainer.dataset.captureWheel = "true";
+            widgetContainer.addEventListener("wheel", (e) => e.stopPropagation());
+
             this.addDOMWidget("gallery", "div", widgetContainer, {});
 
             const uniqueId = `locallora-gallery-${this.id}`;
+            
             widgetContainer.innerHTML = `
                 <style>
                     /* --- General Styles --- */
-                    #${uniqueId} .locallora-container { display: flex; flex-direction: column; height: 100%; font-family: sans-serif; }
+                    #${uniqueId} .locallora-container { display: flex; flex-direction: column; height: 100%; font-family: sans-serif; overflow: hidden; }
                     #${uniqueId} .locallora-selected-list { flex-shrink: 0; padding: 5px; background-color: #22222200; max-height: 100%; }
                     #${uniqueId} .locallora-controls { display: flex; flex-direction: column; padding: 5px; gap: 5px; flex-shrink: 0; }
                     #${uniqueId} .locallora-controls-row { display: flex; gap: 10px; align-items: center; }
-                    #${uniqueId} .locallora-gallery { flex-grow: 1; overflow-y: auto; background-color: #1a1a1a; padding: 5px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
+                    #${uniqueId} .locallora-gallery { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; background-color: #1a1a1a; padding: 5px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-content: start; }
                     
                     /* --- Lora Card --- */
                     #${uniqueId} .locallora-lora-card { cursor: pointer; border: 3px solid transparent; border-radius: 8px; background-color: var(--comfy-input-bg); transition: border-color 0.2s; display: flex; flex-direction: column; position: relative; }
@@ -898,7 +903,7 @@ const LocalLoraGalleryNode = {
                         if (newUrl) {
                             if (!linkBtn) {
                                 linkBtn = document.createElement('a');
-                                linkBtn.className = 'lora-card-link-btn';
+                                linkBtn.className = 'card-btn lora-card-link-btn';
                                 linkBtn.title = 'Open download page';
                                 linkBtn.innerHTML = '🔗';
                                 linkBtn.target = '_blank';
@@ -1073,18 +1078,54 @@ const LocalLoraGalleryNode = {
                 });
             };
 
+            const fitHeight = () => {
+                if (!widgetContainer) return;
+
+                const size = node_instance.size; 
+
+                let topOffset = widgetContainer.offsetTop;
+
+                if (topOffset < 20) {
+                    const baseHeader = 60;
+                    const extraInputHeight = node_instance.isModelOnly ? 0 : 20; 
+                    
+                    topOffset += (baseHeader + extraInputHeight);
+                }
+
+                const bottomPadding = 20;
+                
+                let targetHeight = size[1] - topOffset - bottomPadding;
+                
+                if (targetHeight < 0) targetHeight = 0;
+
+                window.requestAnimationFrame(() => {
+                    widgetContainer.style.height = targetHeight + "px";
+                    widgetContainer.style.width = "100%";
+                });
+            };
+
             this.onResize = function(size) {
                 const controlsEl = widgetContainer.querySelector(".locallora-controls");
-                const dynamicMinHeight = selectedListEl.scrollHeight + (controlsEl?.offsetHeight || 0) + HEADER_HEIGHT;
+                let calculatedMinHeight = selectedListEl.scrollHeight + (controlsEl?.offsetHeight || 0) + HEADER_HEIGHT;
+                
                 if (!mainContainer.classList.contains("gallery-collapsed")) {
-                    this.expandedHeight = size[1];
+                    calculatedMinHeight += 300; 
+                    this.expandedHeight = Math.max(size[1], calculatedMinHeight);
                 }
-                if (size[1] < dynamicMinHeight) size[1] = dynamicMinHeight;
+                
+                if (size[1] < calculatedMinHeight) size[1] = calculatedMinHeight;
                 if (size[0] < MIN_NODE_WIDTH) size[0] = MIN_NODE_WIDTH;
+
+                fitHeight();
             };
 
             bindEventListeners();
-            setTimeout(() => this.initializeNode(), 1);
+            
+            setTimeout(async () => {
+                await this.initializeNode();
+                fitHeight();
+                requestAnimationFrame(() => fitHeight());
+            }, 1);
 
             return result;
         };
