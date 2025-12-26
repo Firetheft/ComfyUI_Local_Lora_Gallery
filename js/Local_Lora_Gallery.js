@@ -7,10 +7,10 @@ const LocalLoraGalleryNode = {
     currentPage: 1,
     totalPages: 1,
     
-    async getLoras(filter_tag = "", mode = "OR", folder = "", page = 1, selected_loras = []) {
+    async getLoras(filter_tag = "", mode = "OR", folder = "", page = 1, selected_loras = [], name_filter = "") {
         this.isLoading = true;
         try {
-            let url = `/localloragallery/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}&folder=${encodeURIComponent(folder)}&page=${page}`;
+            let url = `/localloragallery/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}&folder=${encodeURIComponent(folder)}&page=${page}&name_filter=${encodeURIComponent(name_filter)}`;
             selected_loras.forEach(lora => {
                 url += `&selected_loras=${encodeURIComponent(lora)}`;
             });
@@ -57,6 +57,12 @@ const LocalLoraGalleryNode = {
     },
 
     setup(nodeType, nodeData) {
+        const onConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = function () {
+            onConfigure?.apply(this, arguments);
+            this.isDeserialized = true;
+        };
+
         const onNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             const result = onNodeCreated?.apply(this, arguments);
@@ -194,7 +200,7 @@ const LocalLoraGalleryNode = {
                     #${uniqueId} .locallora-multiselect-tag-dropdown label:hover { background-color: #444; }
 
                     /* --- Presets --- */
-                    #${uniqueId} .locallora-preset-container { position: relative; display: inline-block; margin-bottom: 3px; }
+                    #${uniqueId} .locallora-preset-container { position: relative; display: inline-block; margin-bottom: 0px; }
                     #${uniqueId} .preset-dropdown { display: none; position: absolute; background-color: #222; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 10; border: 1px solid #555; right: 0; }
                     #${uniqueId} .preset-dropdown a { color: #ccc; padding: 8px 12px; text-decoration: none; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
                     #${uniqueId} .preset-dropdown a:hover { background-color: #444; }
@@ -339,6 +345,23 @@ const LocalLoraGalleryNode = {
                     nameLabel.className = "lora-name";
                     nameLabel.textContent = item.lora;
                     nameLabel.title = item.lora;
+
+                    const trigLabel = document.createElement("span");
+                    trigLabel.className = "lora-label";
+                    trigLabel.textContent = "Trig";
+                    trigLabel.title = "Enable/Disable Trigger Words";
+                    trigLabel.style.marginLeft = "5px";
+                    trigLabel.style.cursor = "help";
+
+                    const trigInput = document.createElement("input");
+                    trigInput.type = "checkbox";
+                    trigInput.checked = item.use_trigger !== false; 
+                    trigInput.title = "Toggle Trigger Words";
+                    trigInput.style.marginRight = "5px"; 
+                    trigInput.addEventListener("change", (e) => { 
+                        this.loraData[index].use_trigger = e.target.checked; 
+                        updateSelection(); 
+                    });
                     
                     const strengthModelLabel = document.createElement("span");
                     strengthModelLabel.className = "lora-label";
@@ -352,6 +375,8 @@ const LocalLoraGalleryNode = {
                     
                     el.appendChild(toggle);
                     el.appendChild(nameLabel);
+                    el.appendChild(trigLabel);
+                    el.appendChild(trigInput);
                     el.appendChild(strengthModelLabel);
                     el.appendChild(strengthModelInput);
 
@@ -564,7 +589,7 @@ const LocalLoraGalleryNode = {
                         if (existingIndex > -1) {
                             this.loraData.splice(existingIndex, 1);
                         } else {
-                            this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0 });
+                            this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0, use_trigger: true });
                         }
                         renderSelectedList();
                         updateSelection();
@@ -602,12 +627,33 @@ const LocalLoraGalleryNode = {
                     });
                 });
             };
+
+            const debounce = (func, delay) => {
+                let timeoutId;
+                return (...args) => {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => {
+                        func.apply(this, args);
+                    }, delay);
+                };
+            };
             
             const fetchAndRender = async (append = false) => {
                 if (this.isLoading) return;
                 const pageToFetch = append ? this.currentPage + 1 : 1;
                 if (append && pageToFetch > this.totalPages) return;
-                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(this, tagFilterInput.value, tagFilterModeBtn.textContent, folderFilterSelect.value, pageToFetch, this.loraData.map(item => item.lora)); 
+
+                const currentSearchTerm = searchInput ? searchInput.value.trim() : "";
+
+                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(
+                    this, 
+                    tagFilterInput.value, 
+                    tagFilterModeBtn.textContent, 
+                    folderFilterSelect.value, 
+                    pageToFetch, 
+                    this.loraData.map(item => item.lora),
+                    currentSearchTerm
+                );
 
                 if (append) {
                     const existingNames = new Set(this.availableLoras.map(l => l.name));
@@ -820,7 +866,21 @@ const LocalLoraGalleryNode = {
                     console.error("LocalLoraGallery: Failed to get initial UI state.", e); 
                 }
 
-                this.loraData = initialState.lora_stack || [];
+                if (this.isDeserialized) {
+                    const widget = this.widgets.find(w => w.name === "selection_data");
+                    if (widget && widget.value) {
+                        try {
+                            this.loraData = JSON.parse(widget.value);
+                        } catch (e) {
+                            this.loraData = [];
+                        }
+                    } else {
+                        this.loraData = [];
+                    }
+                } else {
+                    this.loraData = initialState.lora_stack || [];
+                }
+
                 const selectionJson = JSON.stringify(this.loraData);
                 this.setProperty("selection_data", selectionJson);
                 const widget = this.widgets.find(w => w.name === "selection_data");
@@ -1057,7 +1117,16 @@ const LocalLoraGalleryNode = {
                     updateSelection();
                 });
 
-                searchInput.addEventListener("input", () => renderGallery(false));
+                const debouncedServerSearch = debounce(() => {
+                    this.currentPage = 1;
+                    fetchAndRender(false);
+                }, 300);
+
+                searchInput.addEventListener("input", () => {
+                    renderGallery(false);
+                    debouncedServerSearch();
+                });
+
                 tagFilterInput.addEventListener("keydown", (e) => { if(e.key === 'Enter') saveStateAndFetch(); });
                 
                 const arrow = multiSelectTagContainer.querySelector('.locallora-multiselect-arrow');

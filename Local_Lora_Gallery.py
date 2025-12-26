@@ -267,6 +267,7 @@ async def get_loras_endpoint(request):
         filter_tags = [tag.strip() for tag in filter_tags_str.split(',') if tag.strip()]
         filter_mode = request.query.get('mode', 'OR').upper()
         filter_folder = request.query.get('folder', '').strip()
+        name_filter = request.query.get('name_filter', '').strip().lower()
         selected_loras = request.query.getall('selected_loras', [])
         
         page = int(request.query.get('page', 1))
@@ -295,6 +296,9 @@ async def get_loras_endpoint(request):
             relative_path = os.path.relpath(os.path.dirname(lora_full_path), this_lora_root)
             folder = "." if relative_path == "." else relative_path
             all_folders.add(folder)
+
+            if name_filter and name_filter not in lora.lower():
+                continue
 
             if filter_folder and filter_folder != folder:
                 continue
@@ -530,10 +534,11 @@ class LocalLoraGallery(BaseLoraGallery):
 
             lora_name = config['lora']
 
-            lora_meta = all_metadata.get(lora_name, {})
-            triggers = lora_meta.get('trigger_words', '').strip()
-            if triggers:
-                trigger_words_list.append(triggers)
+            if config.get('use_trigger', True):
+                lora_meta = all_metadata.get(lora_name, {})
+                triggers = lora_meta.get('trigger_words', '').strip()
+                if triggers:
+                    trigger_words_list.append(triggers)
 
             try:
                 strength_model = float(config.get('strength', 1.0))
@@ -604,10 +609,11 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
 
             lora_name = config['lora']
 
-            lora_meta = all_metadata.get(lora_name, {})
-            triggers = lora_meta.get('trigger_words', '').strip()
-            if triggers:
-                trigger_words_list.append(triggers)
+            if config.get('use_trigger', True):
+                lora_meta = all_metadata.get(lora_name, {})
+                triggers = lora_meta.get('trigger_words', '').strip()
+                if triggers:
+                    trigger_words_list.append(triggers)
 
             try:
                 strength_model = float(config.get('strength', 1.0))
