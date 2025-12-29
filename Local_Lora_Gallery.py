@@ -12,8 +12,10 @@ from urllib.parse import urlparse
 
 NunchakuFluxLoraLoader = None
 NunchakuQwenLoraLoader = None
+NunchakuZImageLoraLoader = None
 is_nunchaku_flux_available = False
 is_nunchaku_qwen_available = False
+is_nunchaku_zimage_available = False
 
 try:
     from nodes import NODE_CLASS_MAPPINGS
@@ -27,6 +29,11 @@ try:
         NunchakuQwenLoraLoader = NODE_CLASS_MAPPINGS["NunchakuQwenImageLoraLoader"]
         is_nunchaku_qwen_available = True
         print("✅ Local Lora Gallery: Nunchaku Qwen Image integration enabled.")
+
+    if "NunchakuZImageLoraLoader" in NODE_CLASS_MAPPINGS:
+        NunchakuZImageLoraLoader = NODE_CLASS_MAPPINGS["NunchakuZImageLoraLoader"]
+        is_nunchaku_zimage_available = True
+        print("✅ Local Lora Gallery: Nunchaku Z-Image integration enabled.")
         
 except Exception as e:
     print(f"INFO: Local Lora Gallery - Nunchaku nodes not found or failed to load. Running in standard mode. Error: {e}")
@@ -471,7 +478,7 @@ class BaseLoraGallery:
 
     def _get_nunchaku_model_type(self, model):
         """Checks if the model is a Nunchaku-accelerated model and returns its type."""
-        if not (is_nunchaku_flux_available or is_nunchaku_qwen_available):
+        if not (is_nunchaku_flux_available or is_nunchaku_qwen_available or is_nunchaku_zimage_available):
             return 'none'
         
         if not hasattr(model.model, 'diffusion_model'):
@@ -483,6 +490,8 @@ class BaseLoraGallery:
             return 'flux'
         elif wrapper_class_name == 'ComfyQwenImageWrapper' and is_nunchaku_qwen_available:
             return 'qwen'
+        elif wrapper_class_name == 'ComfyZImageWrapper' and is_nunchaku_zimage_available:
+            return 'zimage'
         
         return 'none'
 
@@ -524,6 +533,9 @@ class LocalLoraGallery(BaseLoraGallery):
         elif nunchaku_model_type == 'qwen':
             loader_instance = NunchakuQwenLoraLoader()
             print("LocalLoraGallery: Using NunchakuQwenImageLoraLoader.")
+        elif nunchaku_model_type == 'zimage':
+            loader_instance = NunchakuZImageLoraLoader()
+            print("LocalLoraGallery: Using NunchakuZImageLoraLoader.")
         else:
             loader_instance = LoraLoader()
             print("LocalLoraGallery: Using standard LoraLoader.")
@@ -547,7 +559,7 @@ class LocalLoraGallery(BaseLoraGallery):
                 if strength_model == 0 and strength_clip == 0:
                     continue
 
-                if nunchaku_model_type in ['flux', 'qwen']:
+                if nunchaku_model_type in ['flux', 'qwen', 'zimage']:
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     current_model, current_clip = loader_instance.load_lora(current_model, current_clip, lora_name, strength_model, strength_clip)
@@ -599,6 +611,9 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
         elif nunchaku_model_type == 'qwen':
             loader_instance = NunchakuQwenLoraLoader()
             print("LocalLoraGalleryModelOnly: Using NunchakuQwenImageLoraLoader.")
+        elif nunchaku_model_type == 'zimage':
+            loader_instance = NunchakuZImageLoraLoader()
+            print("LocalLoraGalleryModelOnly: Using NunchakuZImageLoraLoader.")
         else:
             loader_instance = LoraLoaderModelOnly()
             print("LocalLoraGalleryModelOnly: Using standard LoraLoaderModelOnly.")
@@ -620,7 +635,7 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
                 if strength_model == 0:
                     continue
 
-                if nunchaku_model_type in ['flux', 'qwen']:
+                if nunchaku_model_type in ['flux', 'qwen', 'zimage']:
                     (current_model,) = loader_instance.load_lora(current_model, lora_name, strength_model)
                 else:
                     (current_model,) = loader_instance.load_lora_model_only(current_model, lora_name, strength_model)
