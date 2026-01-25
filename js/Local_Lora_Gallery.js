@@ -95,7 +95,7 @@ const LocalLoraGalleryNode = {
             this.size = [700, 600];
             this.loraData = [];
             this.availableLoras = [];
-            this.isModelOnly = nodeData.name.includes("ModelOnly");
+            this.isModelOnly = nodeData.name.includes("ModelOnly") || nodeData.name.includes("Stacker");
             this.selectedCardsForEditing = new Set(); 
 
             const node_instance = this;
@@ -1202,10 +1202,15 @@ const LocalLoraGalleryNode = {
 };
 
 app.registerExtension({
-    name: "LocalLoraGallery.GalleryUI",
-    async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "LocalLoraGallery" || nodeData.name === "LocalLoraGalleryModelOnly") {
-            LocalLoraGalleryNode.setup(nodeType, nodeData);
-        }
-    },
+	name: "LocalLoraGallery.GalleryUI",
+	async beforeRegisterNodeDef(nodeType, nodeData) {
+		if (
+			nodeData.name === "LocalLoraGallery" ||
+			nodeData.name === "LocalLoraGalleryModelOnly" ||
+			nodeData.name === "LocalLoraGalleryStacker"
+		) {
+			LocalLoraGalleryNode.setup(nodeType, nodeData);
+		}
+	},
 });
+
