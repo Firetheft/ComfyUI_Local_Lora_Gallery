@@ -719,6 +719,7 @@ class LocalLoraGalleryStacker(BaseLoraGallery):
         active_loras_string = " ".join(active_loras_list)
         return (lora_stack_list, active_loras_string, trigger_words_string)
 
+<<<<<<< HEAD
 class LocalLoraGalleryStackApply(BaseLoraGallery):
     @classmethod
     def INPUT_TYPES(cls):
@@ -781,16 +782,24 @@ class LocalLoraGalleryStackApply(BaseLoraGallery):
         print(f"LocalLoraGalleryStackApply: Applied {applied_count} LoRAs from stack.")
         return (current_model, current_clip)
 
+=======
+>>>>>>> 8206ab4eda0980ca56137fde23ece21b2587f292
 
 NODE_CLASS_MAPPINGS = {
     "LocalLoraGallery": LocalLoraGallery,
     "LocalLoraGalleryModelOnly": LocalLoraGalleryModelOnly,
     "LocalLoraGalleryStacker": LocalLoraGalleryStacker,
+<<<<<<< HEAD
     "LocalLoraGalleryStackApply": LocalLoraGalleryStackApply,
+=======
+>>>>>>> 8206ab4eda0980ca56137fde23ece21b2587f292
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LocalLoraGallery": "Local Lora Gallery",
     "LocalLoraGalleryModelOnly": "Local Lora Gallery (Model Only)",
     "LocalLoraGalleryStacker": "Local Lora Gallery Stacker",
+<<<<<<< HEAD
     "LocalLoraGalleryStackApply": "Local Lora Gallery Stack Apply",
+=======
+>>>>>>> 8206ab4eda0980ca56137fde23ece21b2587f292
 }
