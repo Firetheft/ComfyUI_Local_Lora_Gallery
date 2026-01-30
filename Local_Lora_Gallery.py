@@ -39,7 +39,8 @@ except Exception as e:
     print(f"INFO: Local Lora Gallery - Nunchaku nodes not found or failed to load. Running in standard mode. Error: {e}")
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
-METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
+LORA_ROOT = folder_paths.get_folder_paths("loras")[0]
+METADATA_FILE = os.path.join(LORA_ROOT, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
 PRESETS_FILE = os.path.join(NODE_DIR, "lora_gallery_presets.json")
 VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi']
