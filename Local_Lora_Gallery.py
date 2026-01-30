@@ -649,11 +649,84 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
         trigger_words_string = ", ".join(trigger_words_list)
         return (current_model, trigger_words_string)
 
+class LocalLoraGalleryStacker(BaseLoraGallery):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {},
+            "hidden": {
+                "selection_data": (
+                    "STRING",
+                    {"default": "[]", "multiline": True, "forceInput": True},
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("LORA_STACK", "STRING", "STRING")
+    RETURN_NAMES = ("lora_stack", "active_loras", "trigger_words")
+
+    FUNCTION = "load_loras"
+    CATEGORY = "📜Asset Gallery/Loras"
+
+    def load_loras(self, selection_data="[]", **kwargs):
+        try:
+            lora_configs = json.loads(selection_data)
+        except:
+            lora_configs = []
+
+        all_metadata = load_metadata()
+        trigger_words_list = []
+        active_loras_list = []
+        lora_stack_list = []
+
+        for config in lora_configs:
+            if not config.get("on", True) or not config.get("lora"):
+                continue
+
+            lora_name = config["lora"]
+
+            # TRIGGER_WORDS
+            if config.get("use_trigger", True):
+                lora_meta = all_metadata.get(lora_name, {})
+                triggers = lora_meta.get("trigger_words", "").strip()
+                if triggers:
+                    trigger_words_list.append(triggers)
+
+            try:
+                strength = float(config.get("strength", 1.0))
+                if strength == 0:
+                    continue
+
+                lora_path = lora_name.replace("/", os.sep)
+
+                # LORA_STACK
+                lora_stack_list.append((lora_path, strength, strength))
+
+                # ACTIVE_LORAS
+                start = lora_path.rfind("/") + 1
+                end = lora_path.rfind(".")
+                lora_name_only = lora_path[start:end] if end > start else ""
+                active_loras_list.append(
+                    f"<lora:{lora_name_only}:{str(strength).strip()}>"
+                )
+
+            except Exception as e:
+                print(
+                    f"LocalLoraGalleryStacker: Failed to load LoRA '{lora_name}': {e}"
+                )
+
+        trigger_words_string = ", ".join(trigger_words_list)
+        active_loras_string = " ".join(active_loras_list)
+        return (lora_stack_list, active_loras_string, trigger_words_string)
+
+
 NODE_CLASS_MAPPINGS = {
     "LocalLoraGallery": LocalLoraGallery,
-    "LocalLoraGalleryModelOnly": LocalLoraGalleryModelOnly
+    "LocalLoraGalleryModelOnly": LocalLoraGalleryModelOnly,
+    "LocalLoraGalleryStacker": LocalLoraGalleryStacker,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LocalLoraGallery": "Local Lora Gallery",
-    "LocalLoraGalleryModelOnly": "Local Lora Gallery (Model Only)"
+    "LocalLoraGalleryModelOnly": "Local Lora Gallery (Model Only)",
+    "LocalLoraGalleryStacker": "Local Lora Gallery Stacker",
 }
